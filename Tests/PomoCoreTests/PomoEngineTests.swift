@@ -33,6 +33,17 @@ final class Harness {
         #expect(h.finished[0].completed)
     }
 
+    @Test func pausedTimeDoesNotCount() {
+        let h = Harness(), e = h.engine
+        e.startFocus(purpose: "x"); h.advance(10)
+        e.pause(); h.advance(100)
+        #expect(e.isPaused)
+        #expect(abs(e.remaining! - 15 * 60) < 0.001)
+        e.resume(); h.advance(5)
+        #expect(!e.isPaused)
+        #expect(abs(e.remaining! - 10 * 60) < 0.001)
+    }
+
     @Test func abandonedAfterFocusFails() {
         let h = Harness(), e = h.engine
         e.startFocus(purpose: "x"); h.advance(25)

@@ -33,11 +33,16 @@ enum Snapshot {
         func advance(_ m: Double) { t = t.addingTimeInterval(m * 60) }
 
         shot("1-idle")
+        model.hoveringClock = true; shot("1b-idle-hover"); model.hoveringClock = false
         model.prompting = true; model.purpose = "Write chapter 3"
         shot("2-prompt")
         model.prompting = false; model.purpose = "Write chapter 3"
         model.startFocus(); advance(10)
         shot("3-focus")
+        model.hoveringClock = true; shot("3b-focus-hover")
+        engine.pause(); shot("3c-paused-hover")
+        model.hoveringClock = false; shot("3d-paused")
+        engine.resume()
         advance(18)
         shot("4-focus-over")
         engine.startRecall(); advance(2)

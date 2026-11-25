@@ -44,6 +44,8 @@ struct TimerView: View {
     @FocusState private var focused: Bool
 
     static let width: CGFloat = 280
+    /// One size for every state, matching the running layout.
+    static let height: CGFloat = 366
     private static let overflowColor = Color.orange
     private static let ink = Color(white: 0.12)
     private static let subtle = Color(white: 0.45)
@@ -60,7 +62,7 @@ struct TimerView: View {
             }
         }
         .padding(20)
-        .frame(width: Self.width)
+        .frame(width: Self.width, height: Self.height)
         .background {
             RoundedRectangle(cornerRadius: Self.radius).fill(Color.white)
             if let r = model.engine.remaining, r < 0, !model.prompting {
@@ -97,39 +99,65 @@ struct TimerView: View {
 
     private var idle: some View {
         VStack(spacing: 14) {
+            Text("READY").font(.rounded(13, .bold)).tracking(1.8).foregroundStyle(Self.subtle)
+            clock(progress: 0, accent: Phase.focus.color, timeColor: Self.ink.opacity(0.5),
+                  time: format(model.engine.duration(of: .focus)), icon: "play.fill",
+                  action: model.beginFocusPrompt)
             Text("\(model.todayCount) of \(model.todayTotal) pomos today")
-                .font(.rounded(14, .medium)).foregroundStyle(Self.subtle)
-            pill("Start focus", Phase.focus.color, prominent: true, wide: true, model.beginFocusPrompt)
+                .font(.rounded(16, .medium)).foregroundStyle(Self.subtle)
+            Color.clear.frame(height: 14)
             HStack(spacing: 8) {
-                pill("Recall", Phase.recall.color, wide: true, model.startRecall)
-                pill("Rest", Phase.rest.color, wide: true, model.startRest)
-                pill("Break", Phase.rest_break.color, wide: true, model.startBreak)
+                pill("Break", Phase.rest_break.color, model.startBreak)
+                pill("Start focus", Phase.focus.color, prominent: true, wide: true, model.beginFocusPrompt)
             }
         }
+    }
+
+    /// The ring + time. Hovering fades the time and shows a centred round button.
+    private func clock(progress: Double, accent: Color, timeColor: Color, time: String, icon: String,
+                       dim: Bool = false, pulseRing: Bool = false, action: @escaping () -> Void) -> some View {
+        ZStack {
+            Circle().stroke(Color.black.opacity(0.06), lineWidth: 9)
+            Circle().trim(from: 0, to: progress)
+                .stroke(accent, style: StrokeStyle(lineWidth: 9, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+                .opacity(pulseRing ? pulse : 1)
+                .animation(.linear(duration: 0.25), value: progress)
+            Text(time)
+                .font(.system(size: 46, weight: .light, design: .rounded).monospacedDigit())
+                .foregroundStyle(timeColor)
+                .opacity(model.hoveringClock ? 0.1 : (dim ? 0.5 : 1))
+            if model.hoveringClock {
+                Image(systemName: icon)
+                    .font(.system(size: 26, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 72, height: 72)
+                    .background(Circle().fill(accent))
+                    .transition(.opacity)
+            }
+        }
+        .frame(width: 176, height: 176)
+        .padding(.vertical, 4)
+        .contentShape(Circle())
+        .onHover { model.hoveringClock = $0 }
+        .onTapGesture(perform: action)
+        .animation(.easeOut(duration: 0.15), value: model.hoveringClock)
     }
 
     private func running(_ phase: Phase, remaining r: TimeInterval) -> some View {
         let over = r < 0
         let accent = over ? Self.overflowColor : phase.color
+        let paused = model.engine.isPaused
+        let shown = paused ? Self.subtle : accent
         let total = model.engine.duration(of: phase)
         let progress = min(max(1 - r / total, 0), 1)
         let finishing = phase == .rest || phase == .rest_break
         return VStack(spacing: 14) {
-            Text(phase.label.uppercased() + (over ? " · OVER" : ""))
-                .font(.rounded(13, .bold)).tracking(1.8).foregroundStyle(accent)
-            ZStack {
-                Circle().stroke(Color.black.opacity(0.06), lineWidth: 9)
-                Circle().trim(from: 0, to: progress)
-                    .stroke(accent, style: StrokeStyle(lineWidth: 9, lineCap: .round))
-                    .rotationEffect(.degrees(-90))
-                    .opacity(over ? pulse : 1)
-                    .animation(.linear(duration: 0.25), value: progress)
-                Text(format(r))
-                    .font(.system(size: 46, weight: .light, design: .rounded).monospacedDigit())
-                    .foregroundStyle(over ? accent : Self.ink)
-            }
-            .frame(width: 176, height: 176)
-            .padding(.vertical, 4)
+            Text(phase.label.uppercased() + (paused ? " · PAUSED" : over ? " · OVER" : ""))
+                .font(.rounded(13, .bold)).tracking(1.8).foregroundStyle(shown)
+            clock(progress: progress, accent: shown, timeColor: over ? accent : Self.ink,
+                  time: format(r), icon: paused ? "play.fill" : "pause.fill",
+                  dim: paused, pulseRing: over && !paused, action: model.togglePause)
             if let s = model.engine.session {
                 Text(s.purpose).font(.rounded(16, .medium)).foregroundStyle(Self.ink).lineLimit(1)
                 dots(for: s)

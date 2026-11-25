@@ -4,13 +4,18 @@ import Foundation
 /// next one (or ends it), so time past its nominal length shows as overflow.
 public final class PomoEngine {
     public struct Active {
+        public let id = UUID()
         public let phase: Phase
-        public let start: Date
+        /// Shifted forward on resume, so paused time never counts.
+        public internal(set) var start: Date
     }
 
     public private(set) var active: Active?
     /// The in-progress pomodoro (focus → recall → rest), if any.
     public private(set) var session: Session?
+
+    public private(set) var pausedAt: Date?
+    public var isPaused: Bool { active != nil && pausedAt != nil }
 
     public var onSessionFinished: ((Session) -> Void)?
 
@@ -28,7 +33,7 @@ public final class PomoEngine {
     /// Seconds left in the active phase; negative once in overflow.
     public var remaining: TimeInterval? {
         guard let a = active else { return nil }
-        return duration(of: a.phase) - now().timeIntervalSince(a.start)
+        return duration(of: a.phase) - (pausedAt ?? now()).timeIntervalSince(a.start)
     }
 
     // MARK: Transitions
@@ -57,6 +62,19 @@ public final class PomoEngine {
         finishSession()
     }
 
+    public func pause() {
+        guard active != nil, pausedAt == nil else { return }
+        pausedAt = now()
+    }
+
+    public func resume() {
+        guard active != nil, let p = pausedAt else { return }
+        active?.start += now().timeIntervalSince(p)
+        pausedAt = nil
+    }
+
+    public func togglePause() { isPaused ? resume() : pause() }
+
     // MARK: Internals
 
     private func startFollowUp(_ phase: Phase) {
@@ -76,6 +94,7 @@ public final class PomoEngine {
     }
 
     private func closeActive() {
+        pausedAt = nil
         guard let a = active else { return }
         if session != nil, let i = session!.phases.indices.last, session!.phases[i].phase == a.phase {
             session!.phases[i].end = now()

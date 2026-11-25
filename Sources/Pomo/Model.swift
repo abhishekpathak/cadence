@@ -15,11 +15,12 @@ final class Model: ObservableObject {
     @Published var tick = Date()
     @Published var prompting = false
     @Published var purpose = ""
+    @Published var hoveringClock = false
     @Published var todayCount = 0
     @Published var todayTotal = 0
 
     private var timer: Timer?
-    private var notifiedFor: Date?
+    private var notifiedFor: UUID?
 
     /// `engine` is injectable so snapshots can drive the UI with a fake clock.
     init(engine: PomoEngine? = nil) {
@@ -42,8 +43,8 @@ final class Model: ObservableObject {
 
     private func onTick() {
         tick = Date()
-        guard let a = engine.active, let r = engine.remaining, r <= 0, notifiedFor != a.start else { return }
-        notifiedFor = a.start
+        guard let a = engine.active, let r = engine.remaining, r <= 0, notifiedFor != a.id else { return }
+        notifiedFor = a.id
         notify("\(a.phase.label) time is up", body: a.phase == .rest || a.phase == .rest_break ? "Well done." : "Move to the next step.")
         dislodge.phaseTimeUp(a.phase)
     }
@@ -66,5 +67,6 @@ final class Model: ObservableObject {
     func startRecall() { engine.startRecall(); tick = Date() }
     func startRest() { engine.startRest(); tick = Date() }
     func startBreak() { prompting = false; engine.startBreak(); tick = Date() }
+    func togglePause() { engine.togglePause(); tick = Date() }
     func end() { prompting = false; engine.endCurrent(); tick = Date() }
 }

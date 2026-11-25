@@ -17,7 +17,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ n: Notification) {
         host = NSHostingView(rootView: TimerView(model: model))
-        panel = FloatingPanel(contentRect: NSRect(x: 0, y: 0, width: TimerView.width, height: 120),
+        panel = FloatingPanel(contentRect: NSRect(x: 0, y: 0, width: TimerView.width, height: TimerView.height),
                               styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         panel.contentView = host
         panel.level = .floating
@@ -57,6 +57,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Hotkeys.register(key: kVK_ANSI_E, id: 3) { [self] in model.startRest() }
         Hotkeys.register(key: kVK_ANSI_B, id: 4) { [self] in model.startBreak() }
         Hotkeys.register(key: kVK_ANSI_X, id: 5) { [self] in model.end() }
+        Hotkeys.register(key: kVK_Space, id: 6) { [self] in model.togglePause() }
     }
 
     func fitToContent() {
