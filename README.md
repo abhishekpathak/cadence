@@ -35,7 +35,7 @@ Starting a focus session asks what it's for. Move through the steps from the win
 
 Click the 🍅 menu bar icon for **Settings…** (phase lengths in whole minutes, start at login), **Show / Hide** and **Quit**.
 
-Finished sessions are stored as JSON in `~/Library/Application Support/Cadence/sessions.json`.
+Finished sessions are appended, one JSON object per line, to `~/Library/Application Support/Cadence/sessions.jsonl`. History is never rewritten, so a crash or an unreadable line can't wipe it.
 
 ## Develop
 

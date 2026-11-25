@@ -24,6 +24,8 @@ final class Model: ObservableObject {
     @Published var todayCount = 0
     @Published var todayTotal = 0
 
+    /// Finished sessions whose write failed; retried on the next save so nothing is dropped silently.
+    private var unsaved: [Session] = []
     private var timer: Timer?
     private var notifiedFor: UUID?
 
@@ -32,12 +34,12 @@ final class Model: ObservableObject {
         let scale = Double(ProcessInfo.processInfo.environment["CADENCE_SCALE"] ?? "") ?? 1
         self.engine = engine ?? CadenceEngine(scale: scale)
         self.engine.onSessionFinished = { [weak self] s in
-            self?.store.append(s)
-            self?.refreshToday()
+            self?.unsaved.append(s)
+            self?.flushUnsaved()
         }
         loadMinutes()
         refreshLogin()
-        refreshToday()
+        refreshToday(reportSkipped: true)
         if Bundle.main.bundleIdentifier != nil { UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in } }
         timer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in self?.onTick() }
     }
@@ -87,8 +89,25 @@ final class Model: ObservableObject {
         }
     }
 
-    private func refreshToday() {
-        let today = store.load().filter { Calendar.current.isDateInToday($0.startedAt) }
+    private func flushUnsaved() {
+        while let next = unsaved.first {
+            do {
+                try store.append(next)
+                unsaved.removeFirst()
+            } catch {
+                notify("Couldn't save your pomodoro", body: "\(error.localizedDescription) It will be retried after your next session.")
+                break
+            }
+        }
+        refreshToday()
+    }
+
+    private func refreshToday(reportSkipped: Bool = false) {
+        let loaded = store.load()
+        if reportSkipped, loaded.skipped > 0 {
+            notify("Some history couldn't be read", body: "\(loaded.skipped) unreadable line(s) in \(store.url.lastPathComponent) were skipped. The file was not changed.")
+        }
+        let today = (loaded.sessions + unsaved).filter { Calendar.current.isDateInToday($0.startedAt) }
         todayTotal = today.count
         todayCount = today.filter(\.completed).count
     }
