@@ -1,14 +1,14 @@
 import AppKit
 import SwiftUI
-import PomoCore
+import CadenceCore
 
-/// `Pomo --snapshot <dir>` renders the UI states to PNGs with a fake clock, then exits.
+/// `Cadence --snapshot <dir>` renders the UI states to PNGs with a fake clock, then exits.
 /// Needs no screen-recording permission, so it works for quick visual checks.
 enum Snapshot {
     static func run(into dir: String) {
         try? FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
         var t = Date(timeIntervalSince1970: 1_000_000)
-        let engine = PomoEngine(now: { t })
+        let engine = CadenceEngine(now: { t })
         let model = Model(engine: engine)
         model.tick = t
 

@@ -1,5 +1,5 @@
 import SwiftUI
-import PomoCore
+import CadenceCore
 
 extension Phase {
     var color: Color {

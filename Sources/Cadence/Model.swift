@@ -1,14 +1,14 @@
 import Foundation
 import SwiftUI
 import UserNotifications
-import PomoCore
+import CadenceCore
 
 protocol DislodgeAction { func phaseTimeUp(_ phase: Phase) }
 /// v1: intentionally does nothing. Future home of the grayscale / overlay / screensaver nudge.
 struct NoDislodge: DislodgeAction { func phaseTimeUp(_ phase: Phase) {} }
 
 final class Model: ObservableObject {
-    let engine: PomoEngine
+    let engine: CadenceEngine
     let store = Store()
     let dislodge: DislodgeAction = NoDislodge()
 
@@ -25,9 +25,9 @@ final class Model: ObservableObject {
     private var notifiedFor: UUID?
 
     /// `engine` is injectable so snapshots can drive the UI with a fake clock.
-    init(engine: PomoEngine? = nil) {
-        let scale = Double(ProcessInfo.processInfo.environment["POMO_SCALE"] ?? "") ?? 1
-        self.engine = engine ?? PomoEngine(scale: scale)
+    init(engine: CadenceEngine? = nil) {
+        let scale = Double(ProcessInfo.processInfo.environment["CADENCE_SCALE"] ?? "") ?? 1
+        self.engine = engine ?? CadenceEngine(scale: scale)
         self.engine.onSessionFinished = { [weak self] s in
             self?.store.append(s)
             self?.refreshToday()
@@ -40,7 +40,10 @@ final class Model: ObservableObject {
 
     private func loadMinutes() {
         for p in Phase.allCases {
-            let stored = UserDefaults.standard.object(forKey: "minutes.\(p.rawValue)") as? Int
+            let key = "minutes.\(p.rawValue)"
+            // Falls back to settings saved under the former bundle id (Pomo).
+            let legacy = UserDefaults(suiteName: "local.abhishek.pomo")?.object(forKey: key) as? Int
+            let stored = UserDefaults.standard.object(forKey: key) as? Int ?? legacy
             setMinutes(stored ?? Int(p.nominal / 60), for: p, persist: false)
         }
     }

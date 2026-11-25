@@ -2,11 +2,11 @@
 import PackageDescription
 
 let package = Package(
-    name: "Pomo",
+    name: "Cadence",
     platforms: [.macOS(.v13)],
     targets: [
-        .target(name: "PomoCore"),
-        .executableTarget(name: "Pomo", dependencies: ["PomoCore"]),
-        .testTarget(name: "PomoCoreTests", dependencies: ["PomoCore"]),
+        .target(name: "CadenceCore"),
+        .executableTarget(name: "Cadence", dependencies: ["CadenceCore"]),
+        .testTarget(name: "CadenceCoreTests", dependencies: ["CadenceCore"]),
     ]
 )

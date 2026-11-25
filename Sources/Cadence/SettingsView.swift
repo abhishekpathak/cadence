@@ -1,5 +1,5 @@
 import SwiftUI
-import PomoCore
+import CadenceCore
 
 /// Whole-minute durations for each phase. Edits apply from the next phase that starts.
 struct SettingsView: View {

@@ -28,8 +28,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         panel.appearance = NSAppearance(named: .aqua)
         panel.isMovableByWindowBackground = true
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-        panel.setFrameAutosaveName("PomoPanel")
-        if !panel.setFrameUsingName("PomoPanel"), let s = NSScreen.main {
+        panel.setFrameAutosaveName("CadencePanel")
+        if !panel.setFrameUsingName("CadencePanel"), let s = NSScreen.main {
             panel.setFrameTopLeftPoint(NSPoint(x: s.visibleFrame.maxX - TimerView.width - 20, y: s.visibleFrame.maxY - 20))
         }
         host.postsFrameChangedNotifications = true
@@ -47,7 +47,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(withTitle: "Show / Hide", action: #selector(toggle), keyEquivalent: "").target = self
         menu.addItem(withTitle: "Settings…", action: #selector(openSettings), keyEquivalent: ",").target = self
         menu.addItem(.separator())
-        menu.addItem(withTitle: "Quit Pomo", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        menu.addItem(withTitle: "Quit Cadence", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         statusItem.menu = menu
 
         // ⌃⌥ + P / R / E / B / X
@@ -76,7 +76,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let host = NSHostingView(rootView: SettingsView(model: model))
             let w = NSWindow(contentRect: NSRect(origin: .zero, size: host.fittingSize),
                              styleMask: [.titled, .closable], backing: .buffered, defer: false)
-            w.title = "Pomo Settings"
+            w.title = "Cadence Settings"
             w.contentView = host
             w.appearance = NSAppearance(named: .aqua)
             w.isReleasedWhenClosed = false

@@ -2,7 +2,7 @@ import Foundation
 
 /// Drives the 25 + 5 + 5 pattern. A phase stays active until the user starts the
 /// next one (or ends it), so time past its nominal length shows as overflow.
-public final class PomoEngine {
+public final class CadenceEngine {
     public struct Active {
         public let id = UUID()
         public let phase: Phase

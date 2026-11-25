@@ -1,19 +1,19 @@
 import Foundation
 import Testing
-@testable import PomoCore
+@testable import CadenceCore
 
 final class Harness {
     var t = Date(timeIntervalSince1970: 1_000_000)
     var finished: [Session] = []
-    lazy var engine: PomoEngine = {
-        let e = PomoEngine(now: { [unowned self] in self.t })
+    lazy var engine: CadenceEngine = {
+        let e = CadenceEngine(now: { [unowned self] in self.t })
         e.onSessionFinished = { [unowned self] in self.finished.append($0) }
         return e
     }()
     func advance(_ minutes: Double) { t = t.addingTimeInterval(minutes * 60) }
 }
 
-@Suite struct PomoEngineTests {
+@Suite struct CadenceEngineTests {
     @Test func fullCycleSucceeds() {
         let h = Harness(), e = h.engine
         e.startFocus(purpose: "x"); h.advance(25)
