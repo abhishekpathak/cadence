@@ -49,5 +49,7 @@ enum Snapshot {
         shot("5-recall")
         engine.startRest(); advance(1)
         shot("6-rest")
+        engine.startBreak(); advance(1)
+        shot("7-break")
     }
 }

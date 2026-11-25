@@ -103,8 +103,8 @@ struct TimerView: View {
             clock(progress: 0, accent: Phase.focus.color, timeColor: Self.ink.opacity(0.5),
                   time: format(model.engine.duration(of: .focus)), icon: "play.fill",
                   action: model.beginFocusPrompt)
-            Text("\(model.todayCount) of \(model.todayTotal) pomos today")
-                .font(.rounded(16, .medium)).foregroundStyle(Self.subtle)
+            todayText
+            Color.clear.frame(height: 14) // stands in for the dots row, so buttons line up across screens
             primary("Start focus", Phase.focus.color, model.beginFocusPrompt)
             textButton("Take a break", model.startBreak)
         }
@@ -138,6 +138,11 @@ struct TimerView: View {
         .animation(.easeOut(duration: 0.15), value: model.hoveringClock)
     }
 
+    private var todayText: some View {
+        Text("\(model.todayCount) of \(model.todayTotal) pomos today")
+            .font(.rounded(16, .medium)).foregroundStyle(Self.subtle)
+    }
+
     private func running(_ phase: Phase, remaining r: TimeInterval) -> some View {
         let over = r < 0
         let accent = over ? Self.overflowColor : phase.color
@@ -155,6 +160,9 @@ struct TimerView: View {
             if let s = model.engine.session {
                 Text(s.purpose).font(.rounded(16, .medium)).foregroundStyle(Self.ink).lineLimit(1)
                 dots(for: s)
+            } else {
+                todayText
+                Color.clear.frame(height: 14)
             }
             switch phase {
             case .focus: primary("Recall", Phase.recall.color, model.startRecall)
@@ -169,16 +177,15 @@ struct TimerView: View {
         }
     }
 
-    /// Focus → recall → rest: filled = done, coloured = current, hollow = upcoming.
+    /// Focus → recall → rest: filled = done, dark centre = current, hollow = upcoming.
     private func dots(for s: Session) -> some View {
-        let steps: [Phase] = [.focus, .recall, .rest]
         let reached = s.phases.count
         return HStack(spacing: 8) {
-            ForEach(Array(steps.enumerated()), id: \.offset) { i, p in
+            ForEach(0..<3, id: \.self) { i in
                 ZStack {
-                    Circle().stroke(p.color.opacity(0.45), lineWidth: 2)
-                    if i < reached - 1 { Circle().fill(p.color) }
-                    else if i == reached - 1 { Circle().fill(p.color).padding(3) }
+                    Circle().stroke(Self.subtle.opacity(0.5), lineWidth: 2)
+                    if i < reached - 1 { Circle().fill(Self.subtle) }
+                    else if i == reached - 1 { Circle().fill(Self.ink).padding(3) }
                 }
                 .frame(width: 14, height: 14)
             }
