@@ -13,7 +13,7 @@ enum Snapshot {
         model.tick = t
 
         func shot(_ name: String) {
-            for scheme in [ColorScheme.light, .dark] {
+            for scheme in [ColorScheme.light] {
                 model.tick = t
                 let root = ZStack {
                     (scheme == .dark ? Color(white: 0.16) : Color(white: 0.82))

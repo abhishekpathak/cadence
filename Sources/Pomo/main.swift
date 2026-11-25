@@ -17,18 +17,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ n: Notification) {
         host = NSHostingView(rootView: TimerView(model: model))
-        panel = FloatingPanel(contentRect: NSRect(x: 0, y: 0, width: 220, height: 90),
+        panel = FloatingPanel(contentRect: NSRect(x: 0, y: 0, width: TimerView.width, height: 120),
                               styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         panel.contentView = host
         panel.level = .floating
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.hasShadow = true
+        panel.appearance = NSAppearance(named: .aqua)
         panel.isMovableByWindowBackground = true
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         panel.setFrameAutosaveName("PomoPanel")
         if !panel.setFrameUsingName("PomoPanel"), let s = NSScreen.main {
-            panel.setFrameTopLeftPoint(NSPoint(x: s.visibleFrame.maxX - 240, y: s.visibleFrame.maxY - 20))
+            panel.setFrameTopLeftPoint(NSPoint(x: s.visibleFrame.maxX - TimerView.width - 20, y: s.visibleFrame.maxY - 20))
         }
         host.postsFrameChangedNotifications = true
         panel.orderFrontRegardless()
