@@ -2,7 +2,7 @@
 
 A small macOS focus timer built around a three-step cycle instead of a bare countdown:
 
-**Focus (25) → Active recall (5) → Restful awakeness (5)**
+**Focus (25) → Active recall (5) → Restful wakefulness (5)**
 
 A pomodoro counts as successful once you've gone through all three steps. A separate 15-minute break is available between pomodoros. Durations are configurable.
 
