@@ -1,4 +1,15 @@
+# SwiftPM / build output
 .build/
+.swiftpm/
 Cadence.app/
-.DS_Store
+
+# Local snapshot renders (Cadence --snapshot .snap)
 .snap/
+
+# Xcode, if you open the package there
+xcuserdata/
+DerivedData/
+*.xcodeproj/
+
+# macOS
+.DS_Store
