@@ -24,31 +24,13 @@ final class Harness {
         #expect(h.finished[0].completed)
     }
 
-    @Test func overflowWithinLimitSucceeds() {
+    @Test func anyDurationCountsIfAllPhasesRan() {
         let h = Harness(), e = h.engine
-        e.startFocus(purpose: "x"); h.advance(30)
-        e.startRecall(); h.advance(10)
-        e.startRest(); h.advance(10)
+        e.startFocus(purpose: "x"); h.advance(1)
+        e.startRecall(); h.advance(60)
+        e.startRest(); h.advance(1)
         e.endCurrent()
         #expect(h.finished[0].completed)
-    }
-
-    @Test func overflowBeyondLimitFails() {
-        let h = Harness(), e = h.engine
-        e.startFocus(purpose: "x"); h.advance(41)
-        e.startRecall(); h.advance(5)
-        e.startRest(); h.advance(5)
-        e.endCurrent()
-        #expect(!h.finished[0].completed)
-    }
-
-    @Test func endingPhaseEarlyFails() {
-        let h = Harness(), e = h.engine
-        e.startFocus(purpose: "x"); h.advance(10)
-        e.startRecall(); h.advance(5)
-        e.startRest(); h.advance(5)
-        e.endCurrent()
-        #expect(!h.finished[0].completed)
     }
 
     @Test func abandonedAfterFocusFails() {

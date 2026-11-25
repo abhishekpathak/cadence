@@ -1,10 +1,8 @@
 import Foundation
 
 /// Drives the 25 + 5 + 5 pattern. A phase stays active until the user starts the
-/// next one (or ends it), so time past its nominal length is "overflow".
+/// next one (or ends it), so time past its nominal length shows as overflow.
 public final class PomoEngine {
-    public static let maxOverflow: TimeInterval = 15 * 60
-
     public struct Active {
         public let phase: Phase
         public let start: Date
@@ -26,7 +24,6 @@ public final class PomoEngine {
     }
 
     public func duration(of phase: Phase) -> TimeInterval { phase.nominal / scale }
-    private var overflowLimit: TimeInterval { Self.maxOverflow / scale }
 
     /// Seconds left in the active phase; negative once in overflow.
     public var remaining: TimeInterval? {
@@ -88,22 +85,13 @@ public final class PomoEngine {
 
     private func finishSession() {
         guard var s = session else { return }
-        s.completed = Self.isSuccessful(s, scale: scale)
+        s.completed = Self.isSuccessful(s)
         session = nil
         onSessionFinished?(s)
     }
 
-    /// Success: all three phases ran in order for at least their nominal length,
-    /// with total overflow across them within the limit.
-    public static func isSuccessful(_ s: Session, scale: Double = 1) -> Bool {
-        guard s.phases.map(\.phase) == [.focus, .recall, .rest] else { return false }
-        var overflow: TimeInterval = 0
-        for r in s.phases {
-            guard let end = r.end else { return false }
-            let over = end.timeIntervalSince(r.start) - r.phase.nominal / scale
-            if over < 0 { return false }
-            overflow += over
-        }
-        return overflow <= maxOverflow / scale
+    /// Success: focus, recall and rest all ran, in that order.
+    public static func isSuccessful(_ s: Session) -> Bool {
+        s.phases.map(\.phase) == [.focus, .recall, .rest]
     }
 }
