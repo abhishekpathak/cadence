@@ -24,11 +24,13 @@ struct PillButtonStyle: ButtonStyle {
     var tint: Color
     var prominent = false
     var wide = false
+    var width: CGFloat?
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.rounded(15, .semibold))
             .lineLimit(1)
+            .frame(width: width)
             .frame(maxWidth: wide ? .infinity : nil)
             .padding(.horizontal, wide ? 6 : 16).padding(.vertical, 9)
             .foregroundStyle(prominent ? Color.white : tint)
@@ -52,7 +54,7 @@ struct TimerView: View {
     private static let radius: CGFloat = 22
 
     var body: some View {
-        VStack(spacing: 14) {
+        VStack(spacing: 12) {
             if model.prompting {
                 prompt
             } else if let a = model.engine.active, let r = model.engine.remaining {
@@ -82,7 +84,7 @@ struct TimerView: View {
     // MARK: States
 
     private var prompt: some View {
-        VStack(spacing: 14) {
+        VStack(spacing: 12) {
             Text("What is this pomodoro for?")
                 .font(.rounded(16, .semibold)).foregroundStyle(Self.ink)
             TextField("Purpose", text: $model.purpose)
@@ -90,20 +92,20 @@ struct TimerView: View {
                 .focused($focused)
                 .onSubmit { model.startFocus() }
                 .onAppear { focused = true }
-            pill("Start focus", Phase.focus.color, prominent: true, model.startFocus)
+            primary("Start focus", Phase.focus.color, model.startFocus)
             textButton("Cancel") { model.prompting = false }
         }
     }
 
     private var idle: some View {
-        VStack(spacing: 14) {
+        VStack(spacing: 12) {
             Text("READY").font(.rounded(13, .bold)).tracking(1.8).foregroundStyle(Self.subtle)
             clock(progress: 0, accent: Phase.focus.color, timeColor: Self.ink.opacity(0.5),
                   time: format(model.engine.duration(of: .focus)), icon: "play.fill",
                   action: model.beginFocusPrompt)
             Text("\(model.todayCount) of \(model.todayTotal) pomos today")
                 .font(.rounded(16, .medium)).foregroundStyle(Self.subtle)
-            pill("Start focus", Phase.focus.color, prominent: true, model.beginFocusPrompt)
+            primary("Start focus", Phase.focus.color, model.beginFocusPrompt)
             textButton("Take a break", model.startBreak)
         }
     }
@@ -119,7 +121,7 @@ struct TimerView: View {
                 .opacity(pulseRing ? pulse : 1)
                 .animation(.linear(duration: 0.25), value: progress)
             Text(time)
-                .font(.system(size: 46, weight: .light, design: .rounded).monospacedDigit())
+                .font(.system(size: 42, weight: .light, design: .rounded).monospacedDigit())
                 .foregroundStyle(timeColor)
                 .opacity(model.hoveringClock ? 0 : (dim ? 0.5 : 1))
             if model.hoveringClock {
@@ -129,8 +131,7 @@ struct TimerView: View {
                     .transition(.opacity)
             }
         }
-        .frame(width: 176, height: 176)
-        .padding(.vertical, 4)
+        .frame(width: 160, height: 160)
         .contentShape(Circle())
         .onHover { model.hoveringClock = $0 }
         .onTapGesture(perform: action)
@@ -145,7 +146,7 @@ struct TimerView: View {
         let total = model.engine.duration(of: phase)
         let progress = min(max(1 - r / total, 0), 1)
         let finishing = phase == .rest || phase == .rest_break
-        return VStack(spacing: 14) {
+        return VStack(spacing: 12) {
             Text(phase.label.uppercased() + (paused ? " · PAUSED" : over ? " · OVER" : ""))
                 .font(.rounded(13, .bold)).tracking(1.8).foregroundStyle(shown)
             clock(progress: progress, accent: shown, timeColor: over ? accent : Self.ink,
@@ -155,14 +156,15 @@ struct TimerView: View {
                 Text(s.purpose).font(.rounded(16, .medium)).foregroundStyle(Self.ink).lineLimit(1)
                 dots(for: s)
             }
-            HStack(spacing: 8) {
-                pill(finishing ? "Done" : "Stop", finishing ? accent : Self.subtle,
-                     prominent: finishing, wide: finishing, model.end)
-                switch phase {
-                case .focus: pill("Recall", Phase.recall.color, prominent: true, wide: true, model.startRecall)
-                case .recall: pill("Rest", Phase.rest.color, prominent: true, wide: true, model.startRest)
-                default: EmptyView()
-                }
+            switch phase {
+            case .focus: primary("Recall", Phase.recall.color, model.startRecall)
+            case .recall: primary("Rest", Phase.rest.color, model.startRest)
+            default: primary("Done", accent, model.end)
+            }
+            if finishing {
+                Color.clear.frame(height: 17) // keeps the layout identical to the other phases
+            } else {
+                textButton("Stop", model.end)
             }
         }
     }
@@ -193,6 +195,11 @@ struct TimerView: View {
     private func pill(_ t: String, _ tint: Color, prominent: Bool = false, wide: Bool = false,
                       _ action: @escaping () -> Void) -> some View {
         Button(t, action: action).buttonStyle(PillButtonStyle(tint: tint, prominent: prominent, wide: wide))
+    }
+
+    /// The one main action per screen: same width everywhere, centred.
+    private func primary(_ t: String, _ tint: Color, _ action: @escaping () -> Void) -> some View {
+        Button(t, action: action).buttonStyle(PillButtonStyle(tint: tint, prominent: true, width: 150))
     }
 
     private func format(_ s: TimeInterval) -> String {
