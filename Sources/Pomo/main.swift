@@ -1,6 +1,7 @@
 import AppKit
 import SwiftUI
 import Carbon.HIToolbox
+import Combine
 
 /// Borderless panel that can still take keyboard input (for the purpose field).
 final class FloatingPanel: NSPanel {
@@ -11,9 +12,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let model = Model()
     var panel: FloatingPanel!
     var statusItem: NSStatusItem!
+    var host: NSHostingView<TimerView>!
+    var sizeSub: AnyCancellable?
 
     func applicationDidFinishLaunching(_ n: Notification) {
-        let host = NSHostingView(rootView: TimerView(model: model))
+        host = NSHostingView(rootView: TimerView(model: model))
         panel = FloatingPanel(contentRect: NSRect(x: 0, y: 0, width: 220, height: 90),
                               styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         panel.contentView = host
@@ -29,6 +32,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         host.postsFrameChangedNotifications = true
         panel.orderFrontRegardless()
+
+        // Grow/shrink with content, keeping the top-left corner fixed.
+        sizeSub = model.objectWillChange.sink { [weak self] in
+            DispatchQueue.main.async { self?.fitToContent() }
+        }
+        fitToContent()
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         statusItem.button?.title = "🍅"
@@ -47,6 +56,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Hotkeys.register(key: kVK_ANSI_E, id: 3) { [self] in model.startRest() }
         Hotkeys.register(key: kVK_ANSI_B, id: 4) { [self] in model.startBreak() }
         Hotkeys.register(key: kVK_ANSI_X, id: 5) { [self] in model.end() }
+    }
+
+    func fitToContent() {
+        let size = host.fittingSize
+        guard abs(size.height - panel.frame.height) > 0.5 || abs(size.width - panel.frame.width) > 0.5 else { return }
+        var f = panel.frame
+        f.origin.y += f.height - size.height
+        f.size = size
+        panel.setFrame(f, display: true)
     }
 
     @objc func toggle() {
