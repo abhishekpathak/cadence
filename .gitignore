@@ -1,3 +1,4 @@
 .build/
 Pomo.app/
 .DS_Store
+.snap/

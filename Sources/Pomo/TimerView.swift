@@ -12,6 +12,31 @@ extension Phase {
     }
 }
 
+/// Capsule button: tinted fill, solid when prominent. No hover state (the @State macro
+/// isn't available in this toolchain), so feedback is the pressed state only.
+struct PillButtonStyle: ButtonStyle {
+    var tint: Color
+    var prominent = false
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 11, weight: .semibold, design: .rounded))
+            .lineLimit(1).fixedSize()
+            .padding(.horizontal, 9).padding(.vertical, 5)
+            .foregroundStyle(prominent ? Color.white : tint)
+            .background(Capsule().fill(prominent ? tint : tint.opacity(0.16)))
+            .opacity(configuration.isPressed ? 0.65 : 1)
+            .scaleEffect(configuration.isPressed ? 0.96 : 1)
+            .animation(.easeOut(duration: 0.1), value: configuration.isPressed)
+    }
+}
+
+extension Font {
+    static func rounded(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
+        .system(size: size, weight: weight, design: .rounded)
+    }
+}
+
 struct TimerView: View {
     @ObservedObject var model: Model
     @FocusState private var focused: Bool
@@ -29,7 +54,7 @@ struct TimerView: View {
             }
         }
         .padding(12)
-        .frame(width: 220)
+        .frame(width: 232)
         .background {
             RoundedRectangle(cornerRadius: 14).fill(.regularMaterial)
             if let r = model.engine.remaining, r < 0, !model.prompting {
@@ -48,26 +73,27 @@ struct TimerView: View {
 
     private var prompt: some View {
         VStack(spacing: 8) {
-            Text("What is this pomodoro for?").font(.caption).foregroundStyle(.secondary)
+            Text("What is this pomodoro for?").font(.rounded(12, .medium)).foregroundStyle(.secondary)
             TextField("Purpose", text: $model.purpose)
-                .textFieldStyle(.roundedBorder).focused($focused)
+                .textFieldStyle(.roundedBorder).font(.rounded(13)).focused($focused)
                 .onSubmit { model.startFocus() }
                 .onAppear { focused = true }
             HStack {
-                small("Start", model.startFocus)
-                small("Cancel") { model.prompting = false }
+                pill("Start", Phase.focus.color, prominent: true, model.startFocus)
+                pill("Cancel", .secondary) { model.prompting = false }
             }
         }
     }
 
     private var idle: some View {
         VStack(spacing: 8) {
-            Text("\(model.todayCount)/\(model.todayTotal) pomos today").font(.caption).foregroundStyle(.secondary)
-            HStack(spacing: 6) {
-                small("Focus", model.beginFocusPrompt)
-                small("Recall", model.startRecall)
-                small("Rest", model.startRest)
-                small("Break", model.startBreak)
+            Text("\(model.todayCount) of \(model.todayTotal) pomos today")
+                .font(.rounded(12, .medium)).foregroundStyle(.secondary)
+            HStack(spacing: 4) {
+                pill("Focus", Phase.focus.color, model.beginFocusPrompt)
+                pill("Recall", Phase.recall.color, model.startRecall)
+                pill("Rest", Phase.rest.color, model.startRest)
+                pill("Break", Phase.rest_break.color, model.startBreak)
             }
         }
     }
@@ -79,7 +105,7 @@ struct TimerView: View {
         let progress = min(max(1 - r / total, 0), 1)
         return VStack(spacing: 8) {
             Text(phase.label.uppercased() + (over ? " · OVER" : ""))
-                .font(.caption2.weight(.semibold)).foregroundStyle(accent)
+                .font(.rounded(11, .bold)).tracking(1.4).foregroundStyle(accent)
             ZStack {
                 Circle().stroke(accent.opacity(0.18), lineWidth: 6)
                 Circle().trim(from: 0, to: progress)
@@ -88,21 +114,23 @@ struct TimerView: View {
                     .opacity(over ? pulse : 1)
                     .animation(.linear(duration: 0.25), value: progress)
                 Text(format(r))
-                    .font(.system(size: 26, weight: .light, design: .rounded).monospacedDigit())
+                    .font(.system(size: 30, weight: .light, design: .rounded).monospacedDigit())
                     .foregroundStyle(over ? accent : .primary)
             }
             .frame(width: 104, height: 104)
             if let s = model.engine.session {
-                Text(s.purpose).font(.caption).lineLimit(1)
+                Text(s.purpose).font(.rounded(12, .medium)).lineLimit(1)
                 dots(for: s)
             }
             HStack(spacing: 6) {
                 switch phase {
-                case .focus: small("Recall", model.startRecall)
-                case .recall: small("Rest", model.startRest)
+                case .focus: pill("Recall", Phase.recall.color, prominent: true, model.startRecall)
+                case .recall: pill("Rest", Phase.rest.color, prominent: true, model.startRest)
                 default: EmptyView()
                 }
-                small(phase == .rest || phase == .rest_break ? "Done" : "Stop", model.end)
+                pill(phase == .rest || phase == .rest_break ? "Done" : "Stop",
+                     phase == .rest || phase == .rest_break ? accent : .secondary,
+                     prominent: phase == .rest || phase == .rest_break, model.end)
             }
         }
     }
@@ -123,8 +151,8 @@ struct TimerView: View {
         }
     }
 
-    private func small(_ t: String, _ action: @escaping () -> Void) -> some View {
-        Button(t, action: action).buttonStyle(.bordered).controlSize(.small)
+    private func pill(_ t: String, _ tint: Color, prominent: Bool = false, _ action: @escaping () -> Void) -> some View {
+        Button(t, action: action).buttonStyle(PillButtonStyle(tint: tint, prominent: prominent))
     }
 
     private func format(_ s: TimeInterval) -> String {

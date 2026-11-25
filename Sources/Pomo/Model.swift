@@ -21,15 +21,16 @@ final class Model: ObservableObject {
     private var timer: Timer?
     private var notifiedFor: Date?
 
-    init() {
+    /// `engine` is injectable so snapshots can drive the UI with a fake clock.
+    init(engine: PomoEngine? = nil) {
         let scale = Double(ProcessInfo.processInfo.environment["POMO_SCALE"] ?? "") ?? 1
-        engine = PomoEngine(scale: scale)
-        engine.onSessionFinished = { [weak self] s in
+        self.engine = engine ?? PomoEngine(scale: scale)
+        self.engine.onSessionFinished = { [weak self] s in
             self?.store.append(s)
             self?.refreshToday()
         }
         refreshToday()
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
+        if Bundle.main.bundleIdentifier != nil { UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in } }
         timer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in self?.onTick() }
     }
 
@@ -48,6 +49,7 @@ final class Model: ObservableObject {
     }
 
     private func notify(_ title: String, body: String) {
+        guard Bundle.main.bundleIdentifier != nil else { return }
         let c = UNMutableNotificationContent()
         c.title = title; c.body = body; c.sound = .default
         UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: UUID().uuidString, content: c, trigger: nil))

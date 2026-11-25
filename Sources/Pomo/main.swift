@@ -73,6 +73,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 }
 
 let app = NSApplication.shared
+if let i = CommandLine.arguments.firstIndex(of: "--snapshot"), i + 1 < CommandLine.arguments.count {
+    Snapshot.run(into: CommandLine.arguments[i + 1])
+    exit(0)
+}
 app.setActivationPolicy(.accessory)
 let delegate = AppDelegate()
 app.delegate = delegate
