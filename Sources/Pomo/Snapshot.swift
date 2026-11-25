@@ -30,6 +30,14 @@ enum Snapshot {
                 try? png?.write(to: URL(fileURLWithPath: "\(dir)/\(name)-\(scheme == .dark ? "dark" : "light").png"))
             }
         }
+        func shotSettings() {
+            let host = NSHostingView(rootView: SettingsView(model: model))
+            host.frame = NSRect(origin: .zero, size: host.fittingSize)
+            host.layoutSubtreeIfNeeded()
+            guard let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) else { return }
+            host.cacheDisplay(in: host.bounds, to: rep)
+            try? rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: "\(dir)/8-settings.png"))
+        }
         func advance(_ m: Double) { t = t.addingTimeInterval(m * 60) }
 
         shot("1-idle")
@@ -51,5 +59,6 @@ enum Snapshot {
         shot("6-rest")
         engine.startBreak(); advance(1)
         shot("7-break")
+        shotSettings()
     }
 }

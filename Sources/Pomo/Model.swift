@@ -16,6 +16,8 @@ final class Model: ObservableObject {
     @Published var prompting = false
     @Published var purpose = ""
     @Published var hoveringClock = false
+    @Published private(set) var minutes: [Phase: Int] = [:]
+    static let minuteRange = 1...240
     @Published var todayCount = 0
     @Published var todayTotal = 0
 
@@ -30,9 +32,31 @@ final class Model: ObservableObject {
             self?.store.append(s)
             self?.refreshToday()
         }
+        loadMinutes()
         refreshToday()
         if Bundle.main.bundleIdentifier != nil { UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in } }
         timer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in self?.onTick() }
+    }
+
+    private func loadMinutes() {
+        for p in Phase.allCases {
+            let stored = UserDefaults.standard.object(forKey: "minutes.\(p.rawValue)") as? Int
+            setMinutes(stored ?? Int(p.nominal / 60), for: p, persist: false)
+        }
+    }
+
+    func setMinutes(_ value: Int, for phase: Phase, persist: Bool = true) {
+        let v = min(max(value, Self.minuteRange.lowerBound), Self.minuteRange.upperBound)
+        minutes[phase] = v
+        engine.minutes[phase] = v
+        if persist { UserDefaults.standard.set(v, forKey: "minutes.\(phase.rawValue)") }
+    }
+
+    func resetMinutes() {
+        for p in Phase.allCases {
+            UserDefaults.standard.removeObject(forKey: "minutes.\(p.rawValue)")
+            setMinutes(Int(p.nominal / 60), for: p, persist: false)
+        }
     }
 
     private func refreshToday() {

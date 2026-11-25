@@ -148,7 +148,7 @@ struct TimerView: View {
         let accent = over ? Self.overflowColor : phase.color
         let paused = model.engine.isPaused
         let shown = paused ? Self.subtle : accent
-        let total = model.engine.duration(of: phase)
+        let total = model.engine.active?.duration ?? model.engine.duration(of: phase)
         let progress = min(max(1 - r / total, 0), 1)
         let finishing = phase == .rest || phase == .rest_break
         return VStack(spacing: 12) {

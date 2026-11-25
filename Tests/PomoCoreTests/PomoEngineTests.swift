@@ -44,6 +44,17 @@ final class Harness {
         #expect(abs(e.remaining! - 10 * 60) < 0.001)
     }
 
+    @Test func customDurationsApplyFromNextPhase() {
+        let h = Harness(), e = h.engine
+        e.minutes[.focus] = 50
+        e.startFocus(purpose: "x")
+        #expect(abs(e.remaining! - 50 * 60) < 0.001)
+        e.minutes[.focus] = 10               // changing mid-phase must not affect the running one
+        h.advance(5)
+        #expect(abs(e.remaining! - 45 * 60) < 0.001)
+        #expect(e.duration(of: .focus) == 10 * 60)
+    }
+
     @Test func abandonedAfterFocusFails() {
         let h = Harness(), e = h.engine
         e.startFocus(purpose: "x"); h.advance(25)

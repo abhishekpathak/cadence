@@ -8,6 +8,8 @@ public final class PomoEngine {
         public let phase: Phase
         /// Shifted forward on resume, so paused time never counts.
         public internal(set) var start: Date
+        /// Fixed when the phase starts, so changing settings mid-phase doesn't move the goalposts.
+        public let duration: TimeInterval
     }
 
     public private(set) var active: Active?
@@ -28,12 +30,17 @@ public final class PomoEngine {
         self.now = now
     }
 
-    public func duration(of phase: Phase) -> TimeInterval { phase.nominal / scale }
+    /// Configured length of each phase in whole minutes; defaults to the classic 25/5/5/15.
+    public var minutes: [Phase: Int] = Dictionary(uniqueKeysWithValues: Phase.allCases.map { ($0, Int($0.nominal / 60)) })
+
+    public func duration(of phase: Phase) -> TimeInterval {
+        Double(minutes[phase] ?? Int(phase.nominal / 60)) * 60 / scale
+    }
 
     /// Seconds left in the active phase; negative once in overflow.
     public var remaining: TimeInterval? {
         guard let a = active else { return nil }
-        return duration(of: a.phase) - (pausedAt ?? now()).timeIntervalSince(a.start)
+        return a.duration - (pausedAt ?? now()).timeIntervalSince(a.start)
     }
 
     // MARK: Transitions
@@ -43,7 +50,7 @@ public final class PomoEngine {
         finishSession()
         let t = now()
         session = Session(purpose: purpose, phases: [PhaseRecord(phase: .focus, start: t)])
-        active = Active(phase: .focus, start: t)
+        active = Active(phase: .focus, start: t, duration: duration(of: .focus))
     }
 
     /// Recall/rest only count toward a pomodoro when they follow in order.
@@ -53,7 +60,7 @@ public final class PomoEngine {
     public func startBreak() {
         closeActive()
         finishSession()
-        active = Active(phase: .rest_break, start: now())
+        active = Active(phase: .rest_break, start: now(), duration: duration(of: .rest_break))
     }
 
     /// Ends the active phase. Ending a rest completes the pomodoro.
@@ -86,7 +93,7 @@ public final class PomoEngine {
         } else {
             finishSession() // out of order → the pomodoro in progress fails
         }
-        active = Active(phase: phase, start: t)
+        active = Active(phase: phase, start: t, duration: duration(of: phase))
     }
 
     private func isNext(_ phase: Phase, after previous: Phase?) -> Bool {

@@ -13,6 +13,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var panel: FloatingPanel!
     var statusItem: NSStatusItem!
     var host: NSHostingView<TimerView>!
+    var settingsWindow: NSWindow?
     var sizeSub: AnyCancellable?
 
     func applicationDidFinishLaunching(_ n: Notification) {
@@ -44,6 +45,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem.button?.title = "🍅"
         let menu = NSMenu()
         menu.addItem(withTitle: "Show / Hide", action: #selector(toggle), keyEquivalent: "").target = self
+        menu.addItem(withTitle: "Settings…", action: #selector(openSettings), keyEquivalent: ",").target = self
         menu.addItem(.separator())
         menu.addItem(withTitle: "Quit Pomo", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         statusItem.menu = menu
@@ -67,6 +69,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         f.origin.y += f.height - size.height
         f.size = size
         panel.setFrame(f, display: true)
+    }
+
+    @objc func openSettings() {
+        if settingsWindow == nil {
+            let host = NSHostingView(rootView: SettingsView(model: model))
+            let w = NSWindow(contentRect: NSRect(origin: .zero, size: host.fittingSize),
+                             styleMask: [.titled, .closable], backing: .buffered, defer: false)
+            w.title = "Pomo Settings"
+            w.contentView = host
+            w.appearance = NSAppearance(named: .aqua)
+            w.isReleasedWhenClosed = false
+            w.center()
+            settingsWindow = w
+        }
+        NSApp.activate(ignoringOtherApps: true)
+        settingsWindow?.makeKeyAndOrderFront(nil)
     }
 
     @objc func toggle() {
