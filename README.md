@@ -33,7 +33,7 @@ Starting a focus session asks what it's for. Move through the steps from the win
 | ⌃⌥Space | Pause / resume |
 | ⌃⌥X | End the current phase |
 
-Click the 🍅 menu bar icon for **Settings…** (phase lengths in whole minutes), **Show / Hide** and **Quit**.
+Click the 🍅 menu bar icon for **Settings…** (phase lengths in whole minutes, start at login), **Show / Hide** and **Quit**.
 
 Finished sessions are stored as JSON in `~/Library/Application Support/Cadence/sessions.json`.
 

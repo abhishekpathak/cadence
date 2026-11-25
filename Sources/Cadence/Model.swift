@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import ServiceManagement
 import UserNotifications
 import CadenceCore
 
@@ -18,6 +19,8 @@ final class Model: ObservableObject {
     @Published var hoveringClock = false
     @Published private(set) var minutes: [Phase: Int] = [:]
     static let minuteRange = 1...240
+    @Published private(set) var launchAtLogin = false
+    @Published private(set) var loginNote: String?
     @Published var todayCount = 0
     @Published var todayTotal = 0
 
@@ -33,9 +36,31 @@ final class Model: ObservableObject {
             self?.refreshToday()
         }
         loadMinutes()
+        refreshLogin()
         refreshToday()
         if Bundle.main.bundleIdentifier != nil { UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in } }
         timer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in self?.onTick() }
+    }
+
+    /// Reads the real login-item state, since it can also be changed in System Settings.
+    func refreshLogin() {
+        guard Bundle.main.bundleIdentifier != nil else { return } // not running as an .app
+        let status = SMAppService.mainApp.status
+        launchAtLogin = status == .enabled || status == .requiresApproval
+        loginNote = status == .requiresApproval ? "Approve Cadence in System Settings → General → Login Items." : nil
+    }
+
+    func setLaunchAtLogin(_ on: Bool) {
+        guard Bundle.main.bundleIdentifier != nil else { return }
+        do {
+            if on { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() }
+            loginNote = nil
+        } catch {
+            loginNote = "Couldn't change the login item: \(error.localizedDescription)"
+        }
+        let note = loginNote
+        refreshLogin()
+        if note != nil { loginNote = note }
     }
 
     private func loadMinutes() {

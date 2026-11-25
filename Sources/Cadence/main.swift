@@ -72,6 +72,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc func openSettings() {
+        model.refreshLogin()
         if settingsWindow == nil {
             let host = NSHostingView(rootView: SettingsView(model: model))
             let w = NSWindow(contentRect: NSRect(origin: .zero, size: host.fittingSize),

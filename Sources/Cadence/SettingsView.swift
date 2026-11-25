@@ -21,6 +21,17 @@ struct SettingsView: View {
             Text("Whole minutes, \(Model.minuteRange.lowerBound)–\(Model.minuteRange.upperBound). Changes apply from the next phase you start.")
                 .font(.rounded(12)).foregroundStyle(Self.subtle)
                 .fixedSize(horizontal: false, vertical: true)
+            Divider()
+            HStack {
+                Text("Start at login").font(.rounded(15, .medium)).foregroundStyle(Self.ink)
+                Spacer()
+                Toggle("", isOn: Binding(get: { model.launchAtLogin }, set: model.setLaunchAtLogin))
+                    .toggleStyle(.switch).labelsHidden().tint(Color(white: 0.25))
+            }
+            if let note = model.loginNote {
+                Text(note).font(.rounded(12)).foregroundStyle(Self.subtle)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             HStack {
                 Spacer()
                 Button(action: model.resetMinutes) {
