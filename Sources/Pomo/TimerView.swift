@@ -90,10 +90,8 @@ struct TimerView: View {
                 .focused($focused)
                 .onSubmit { model.startFocus() }
                 .onAppear { focused = true }
-            HStack(spacing: 8) {
-                pill("Cancel", Self.subtle) { model.prompting = false }
-                pill("Start focus", Phase.focus.color, prominent: true, wide: true, model.startFocus)
-            }
+            pill("Start focus", Phase.focus.color, prominent: true, model.startFocus)
+            textButton("Cancel") { model.prompting = false }
         }
     }
 
@@ -105,15 +103,12 @@ struct TimerView: View {
                   action: model.beginFocusPrompt)
             Text("\(model.todayCount) of \(model.todayTotal) pomos today")
                 .font(.rounded(16, .medium)).foregroundStyle(Self.subtle)
-            Color.clear.frame(height: 14)
-            HStack(spacing: 8) {
-                pill("Break", Phase.rest_break.color, model.startBreak)
-                pill("Start focus", Phase.focus.color, prominent: true, wide: true, model.beginFocusPrompt)
-            }
+            pill("Start focus", Phase.focus.color, prominent: true, model.beginFocusPrompt)
+            textButton("Take a break", model.startBreak)
         }
     }
 
-    /// The ring + time. Hovering fades the time and shows a centred round button.
+    /// The ring + time. Hovering hides the time and shows a centred glyph.
     private func clock(progress: Double, accent: Color, timeColor: Color, time: String, icon: String,
                        dim: Bool = false, pulseRing: Bool = false, action: @escaping () -> Void) -> some View {
         ZStack {
@@ -126,13 +121,11 @@ struct TimerView: View {
             Text(time)
                 .font(.system(size: 46, weight: .light, design: .rounded).monospacedDigit())
                 .foregroundStyle(timeColor)
-                .opacity(model.hoveringClock ? 0.1 : (dim ? 0.5 : 1))
+                .opacity(model.hoveringClock ? 0 : (dim ? 0.5 : 1))
             if model.hoveringClock {
                 Image(systemName: icon)
-                    .font(.system(size: 26, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .frame(width: 72, height: 72)
-                    .background(Circle().fill(accent))
+                    .font(.system(size: 44, weight: .medium))
+                    .foregroundStyle(accent)
                     .transition(.opacity)
             }
         }
@@ -188,6 +181,13 @@ struct TimerView: View {
                 .frame(width: 14, height: 14)
             }
         }
+    }
+
+    private func textButton(_ t: String, _ action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(t).font(.rounded(14, .medium)).foregroundStyle(Self.subtle)
+        }
+        .buttonStyle(.plain)
     }
 
     private func pill(_ t: String, _ tint: Color, prominent: Bool = false, wide: Bool = false,
