@@ -28,6 +28,16 @@ struct SettingsView: View {
                 Toggle("", isOn: Binding(get: { model.launchAtLogin }, set: model.setLaunchAtLogin))
                     .toggleStyle(.switch).labelsHidden().tint(Color(white: 0.25))
             }
+            HStack {
+                Text("Session history").font(.rounded(15, .medium)).foregroundStyle(Self.ink)
+                Spacer()
+                Button(action: model.revealSessions) {
+                    Text("Show in Finder").font(.rounded(14, .medium)).foregroundStyle(Self.ink)
+                        .padding(.horizontal, 12).padding(.vertical, 5)
+                        .background(Capsule().fill(Color.black.opacity(0.06)))
+                }
+                .buttonStyle(.plain)
+            }
             if let note = model.loginNote {
                 Text(note).font(.rounded(12)).foregroundStyle(Self.subtle)
                     .fixedSize(horizontal: false, vertical: true)

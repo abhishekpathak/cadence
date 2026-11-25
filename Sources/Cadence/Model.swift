@@ -82,6 +82,15 @@ final class Model: ObservableObject {
         if persist { UserDefaults.standard.set(v, forKey: "minutes.\(phase.rawValue)") }
     }
 
+    /// Selects the session log in Finder, or opens its folder if nothing has been saved yet.
+    func revealSessions() {
+        if FileManager.default.fileExists(atPath: store.url.path) {
+            NSWorkspace.shared.activateFileViewerSelecting([store.url])
+        } else {
+            NSWorkspace.shared.open(store.url.deletingLastPathComponent())
+        }
+    }
+
     func resetMinutes() {
         for p in Phase.allCases {
             UserDefaults.standard.removeObject(forKey: "minutes.\(p.rawValue)")
