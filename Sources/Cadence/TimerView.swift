@@ -41,6 +41,86 @@ struct PillButtonStyle: ButtonStyle {
     }
 }
 
+/// A pie slice between two fractions of a turn, measured clockwise from 12 o'clock.
+struct Wedge: Shape {
+    var from: Double
+    var to: Double
+    var animatableData: AnimatablePair<Double, Double> {
+        get { AnimatablePair(from, to) }
+        set { from = newValue.first; to = newValue.second }
+    }
+
+    func path(in rect: CGRect) -> Path {
+        guard to > from else { return Path() }
+        let c = CGPoint(x: rect.midX, y: rect.midY), r = min(rect.width, rect.height) / 2
+        var p = Path()
+        p.move(to: c)
+        p.addArc(center: c, radius: r, startAngle: .degrees(-90 + from * 360), endAngle: .degrees(-90 + to * 360), clockwise: false)
+        p.closeSubpath()
+        return p
+    }
+}
+
+/// Twelve ticks, one per five minutes; the quarter-hour ones longer.
+struct Ticks: Shape {
+    var inset: CGFloat
+    var length: CGFloat
+    var majorLength: CGFloat
+
+    func path(in rect: CGRect) -> Path {
+        let c = CGPoint(x: rect.midX, y: rect.midY), r = min(rect.width, rect.height) / 2 - inset
+        var p = Path()
+        for i in 0..<12 {
+            let a = Double(i) / 12 * 2 * .pi - .pi / 2
+            let l = i % 3 == 0 ? majorLength : length
+            p.move(to: CGPoint(x: c.x + cos(a) * r, y: c.y + sin(a) * r))
+            p.addLine(to: CGPoint(x: c.x + cos(a) * (r - l), y: c.y + sin(a) * (r - l)))
+        }
+        return p
+    }
+}
+
+/// A 60-minute dial in the style of a Time Timer: the wedge is the time left on an absolute
+/// scale, so its size reads as minutes at a glance (a quarter of the face is 15 minutes).
+struct Dial: View {
+    enum Mode { case idle, running, paused }
+    var remaining: TimeInterval
+    /// The length of a full turn: an hour, divided by the engine's time scale.
+    var turn: TimeInterval
+    var color: Color
+    var overColor: Color
+    var mode: Mode
+
+    private static let ink = Color(white: 0.12)
+
+    var body: some View {
+        let over = remaining < 0
+        let left = min(max(remaining / turn, 0), 1)          // longer than an hour: a full disc
+        let past = min(max(-remaining / turn, 0), 1)
+        ZStack {
+            Circle().fill(Color.white)
+            ZStack {
+                if over {
+                    // Done: the face is empty; a thin orange wedge grows from 12 with the overtime.
+                    Wedge(from: 0, to: past).fill(overColor.opacity(0.85))
+                } else {
+                    // Time left sits just counter-clockwise of 12 and shrinks back towards it.
+                    Wedge(from: 1 - left, to: 1)
+                        .fill(color.opacity(mode == .running ? 1 : mode == .paused ? 0.35 : 0.15))
+                }
+            }
+            .padding(14)
+            .animation(.linear(duration: 0.25), value: remaining)
+            Ticks(inset: 4, length: 4, majorLength: 7)
+                .stroke(Self.ink.opacity(0.3), style: StrokeStyle(lineWidth: 1.5, lineCap: .round))
+            Circle().strokeBorder(over ? overColor : Self.ink.opacity(0.12), lineWidth: over ? 2 : 1.5)
+            Circle().fill(Color.white).frame(width: 12, height: 12) // the knob
+                .overlay(Circle().strokeBorder(Self.ink.opacity(0.15), lineWidth: 1))
+                .shadow(color: .black.opacity(0.12), radius: 1.5, y: 0.5)
+        }
+    }
+}
+
 struct TimerView: View {
     @ObservedObject var model: Model
     @FocusState private var focused: Bool
@@ -99,6 +179,7 @@ struct TimerView: View {
             Text("READY").font(Self.label).tracking(1.8).foregroundStyle(Self.subtle)
             clock(progress: 0, accent: Phase.focus.color, timeColor: Self.ink.opacity(0.5),
                   time: format(model.engine.duration(of: .focus)), icon: "play.fill",
+                  remaining: model.engine.duration(of: .focus), phaseColor: Phase.focus.color,
                   action: model.beginFocusPrompt)
             infoLine(nil)
             primary("Focus", Phase.focus.color, model.beginFocusPrompt)
@@ -107,22 +188,36 @@ struct TimerView: View {
     }
 
     /// The ring + time. Hovering hides the time and shows a centred glyph.
+    /// `remaining` and `phaseColor` feed the disc, which draws time on an absolute 60-minute scale.
     private func clock(progress: Double, accent: Color, timeColor: Color, time: String, icon: String,
+                       remaining: TimeInterval, phaseColor: Color,
                        dim: Bool = false, action: @escaping () -> Void) -> some View {
         ZStack {
-            Circle().stroke(Color.black.opacity(0.06), lineWidth: 9)
-            Circle().trim(from: 0, to: progress)
-                .stroke(accent, style: StrokeStyle(lineWidth: 9, lineCap: .round))
-                .rotationEffect(.degrees(-90))
-                .animation(.linear(duration: 0.25), value: progress)
-            VStack(spacing: 0) {
-                Text(time)
-                    .font(.system(size: 48, weight: .light, design: .rounded).monospacedDigit())
-                    .foregroundStyle(timeColor)
-                Text("min").font(Self.bodyMedium).foregroundStyle(Self.subtle)
+            switch model.clockStyle {
+            case .ring:
+                Circle().stroke(Color.black.opacity(0.06), lineWidth: 9)
+                Circle().trim(from: 0, to: progress)
+                    .stroke(accent, style: StrokeStyle(lineWidth: 9, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                    .animation(.linear(duration: 0.25), value: progress)
+            case .disc:
+                // No number on the face: the wedge is the reading.
+                Dial(remaining: remaining, turn: 3600 / model.engine.scale, color: phaseColor,
+                     overColor: Self.overflowColor,
+                     mode: model.engine.active == nil ? .idle : model.engine.isPaused ? .paused : .running)
+                    .opacity(model.hoveringClock ? 0.25 : 1) // steps back for the play/pause glyph
             }
-            .offset(y: 4) // optically centres the number, not the number + unit
-            .opacity(model.hoveringClock ? 0 : (dim ? 0.5 : 1))
+            if model.clockStyle == .ring {
+                VStack(spacing: 0) {
+                    Text(time)
+                        .font(.system(size: 48, weight: .light, design: .rounded).monospacedDigit())
+                        .foregroundStyle(timeColor)
+                    Text("min").font(Self.bodyMedium).foregroundStyle(Self.subtle)
+                }
+                .offset(y: 4) // optically centres the number, not the number + unit
+                .opacity(model.hoveringClock ? 0 : (dim ? 0.5 : 1))
+            }
+            // Hover: one big glyph, so it's plain that the whole clock is the button.
             if model.hoveringClock {
                 Image(systemName: icon)
                     .font(.system(size: 44, weight: .medium))
@@ -240,6 +335,7 @@ struct TimerView: View {
                 .font(Self.label).tracking(1.8).foregroundStyle(shown)
             clock(progress: progress, accent: shown, timeColor: Self.ink,
                   time: format(r), icon: paused ? "play.fill" : "pause.fill",
+                  remaining: r, phaseColor: phase.color,
                   dim: paused, action: model.togglePause)
             infoLine(model.engine.session?.purpose)
             switch phase {

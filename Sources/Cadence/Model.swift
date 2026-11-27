@@ -8,6 +8,13 @@ protocol DislodgeAction { func phaseTimeUp(_ phase: Phase) }
 /// v1: intentionally does nothing. Future home of the grayscale / overlay / screensaver nudge.
 struct NoDislodge: DislodgeAction { func phaseTimeUp(_ phase: Phase) {} }
 
+/// How the clock draws time: a thin ring that fills as time passes, or a disc whose wedge of
+/// remaining time shrinks (in the style of a Time Timer).
+enum ClockStyle: String, CaseIterable {
+    case ring, disc
+    var label: String { self == .ring ? "Ring" : "Disc" }
+}
+
 final class Model: ObservableObject {
     let engine: CadenceEngine
     let store: Store
@@ -26,6 +33,10 @@ final class Model: ObservableObject {
     var todayCount: Int { todaySessions.count }
     /// The window shows today's list instead of the timer. Changing phase closes it; pausing doesn't.
     @Published var showingToday = false
+    @Published var clockStyle: ClockStyle =
+        ClockStyle(rawValue: UserDefaults.standard.string(forKey: "clockStyle") ?? "") ?? .ring {
+        didSet { UserDefaults.standard.set(clockStyle.rawValue, forKey: "clockStyle") }
+    }
 
     /// Finished sessions whose write failed; retried on the next save so nothing is dropped silently.
     private var unsaved: [Session] = []

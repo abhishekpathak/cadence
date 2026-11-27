@@ -23,6 +23,14 @@ struct SettingsView: View {
                 .fixedSize(horizontal: false, vertical: true)
             Divider()
             HStack {
+                Text("Timer").font(.rounded(15, .medium)).foregroundStyle(Self.ink)
+                Spacer()
+                Picker("", selection: $model.clockStyle) {
+                    ForEach(ClockStyle.allCases, id: \.self) { Text($0.label).tag($0) }
+                }
+                .pickerStyle(.segmented).labelsHidden().fixedSize()
+            }
+            HStack {
                 Text("Start at login").font(.rounded(15, .medium)).foregroundStyle(Self.ink)
                 Spacer()
                 Toggle("", isOn: Binding(get: { model.launchAtLogin }, set: model.setLaunchAtLogin))
