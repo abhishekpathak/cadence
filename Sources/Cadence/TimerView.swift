@@ -53,6 +53,12 @@ struct TimerView: View {
     private static let subtle = Color(white: 0.45)
     private static let radius: CGFloat = 22
 
+    // Type scale: one body size, a small caps label a step down, and the clock.
+    // Colour: ink for what you're doing, subtle for everything around it, phase colour for state.
+    private static let body = Font.rounded(15)
+    private static let bodyMedium = Font.rounded(15, .medium)
+    private static let label = Font.rounded(13, .bold)
+
     var body: some View {
         VStack(spacing: 12) {
             if model.prompting {
@@ -67,20 +73,9 @@ struct TimerView: View {
         }
         .padding(20)
         .frame(width: Self.width, height: Self.height)
-        .background {
-            RoundedRectangle(cornerRadius: Self.radius).fill(Color.white)
-            if let r = model.engine.remaining, r < 0, !model.prompting {
-                RoundedRectangle(cornerRadius: Self.radius).fill(Self.overflowColor.opacity(0.10 * pulse))
-            }
-        }
+        .background(RoundedRectangle(cornerRadius: Self.radius).fill(Color.white))
         .overlay(RoundedRectangle(cornerRadius: Self.radius).stroke(Color.black.opacity(0.08), lineWidth: 1))
         .environment(\.colorScheme, .light) // deliberately white in both system appearances
-        .animation(.easeInOut(duration: 0.25), value: pulse)
-    }
-
-    /// 0.5...1, slow breathing keyed off the model's tick.
-    private var pulse: Double {
-        0.75 + 0.25 * cos(model.tick.timeIntervalSinceReferenceDate * 2 * .pi / 1.6)
     }
 
     // MARK: States
@@ -88,9 +83,9 @@ struct TimerView: View {
     private var prompt: some View {
         VStack(spacing: 12) {
             Text("What is this pomodoro for?")
-                .font(.rounded(16, .semibold)).foregroundStyle(Self.ink)
+                .font(.rounded(15, .semibold)).foregroundStyle(Self.ink)
             TextField("Purpose", text: $model.purpose)
-                .textFieldStyle(.roundedBorder).font(.rounded(15)).controlSize(.large)
+                .textFieldStyle(.roundedBorder).font(Self.body).controlSize(.large)
                 .focused($focused)
                 .onSubmit { model.startFocus() }
                 .onAppear { focused = true }
@@ -101,7 +96,7 @@ struct TimerView: View {
 
     private var idle: some View {
         VStack(spacing: 12) {
-            Text("READY").font(.rounded(13, .bold)).tracking(1.8).foregroundStyle(Self.subtle)
+            Text("READY").font(Self.label).tracking(1.8).foregroundStyle(Self.subtle)
             clock(progress: 0, accent: Phase.focus.color, timeColor: Self.ink.opacity(0.5),
                   time: format(model.engine.duration(of: .focus)), icon: "play.fill",
                   action: model.beginFocusPrompt)
@@ -114,18 +109,21 @@ struct TimerView: View {
 
     /// The ring + time. Hovering hides the time and shows a centred glyph.
     private func clock(progress: Double, accent: Color, timeColor: Color, time: String, icon: String,
-                       dim: Bool = false, pulseRing: Bool = false, action: @escaping () -> Void) -> some View {
+                       dim: Bool = false, action: @escaping () -> Void) -> some View {
         ZStack {
             Circle().stroke(Color.black.opacity(0.06), lineWidth: 9)
             Circle().trim(from: 0, to: progress)
                 .stroke(accent, style: StrokeStyle(lineWidth: 9, lineCap: .round))
                 .rotationEffect(.degrees(-90))
-                .opacity(pulseRing ? pulse : 1)
                 .animation(.linear(duration: 0.25), value: progress)
-            Text(time)
-                .font(.system(size: 42, weight: .light, design: .rounded).monospacedDigit())
-                .foregroundStyle(timeColor)
-                .opacity(model.hoveringClock ? 0 : (dim ? 0.5 : 1))
+            VStack(spacing: 0) {
+                Text(time)
+                    .font(.system(size: 48, weight: .light, design: .rounded).monospacedDigit())
+                    .foregroundStyle(timeColor)
+                Text("min").font(Self.bodyMedium).foregroundStyle(Self.subtle)
+            }
+            .offset(y: 4) // optically centres the number, not the number + unit
+            .opacity(model.hoveringClock ? 0 : (dim ? 0.5 : 1))
             if model.hoveringClock {
                 Image(systemName: icon)
                     .font(.system(size: 44, weight: .medium))
@@ -144,7 +142,7 @@ struct TimerView: View {
     private var todayText: some View {
         Button { model.showingToday = true } label: {
             Text("\(model.todayCount) \(model.todayCount == 1 ? "pomo" : "pomos") today")
-                .font(.rounded(16, .medium)).foregroundStyle(Self.subtle)
+                .font(Self.bodyMedium).foregroundStyle(Self.subtle)
         }
         .buttonStyle(.plain)
         .help("Show today's pomos")
@@ -158,10 +156,10 @@ struct TimerView: View {
     private var todayList: some View {
         VStack(spacing: 12) {
             ZStack {
-                Text("TODAY").font(.rounded(13, .bold)).tracking(1.8).foregroundStyle(Self.subtle)
+                Text("TODAY").font(Self.label).tracking(1.8).foregroundStyle(Self.subtle)
                 HStack {
                     Button { model.showingToday = false } label: {
-                        Image(systemName: "chevron.left").font(.system(size: 14, weight: .semibold))
+                        Image(systemName: "chevron.left").font(.system(size: 15, weight: .semibold))
                             .foregroundStyle(Self.subtle).frame(width: 28, height: 22).contentShape(Rectangle())
                     }
                     .buttonStyle(.plain).help("Back to the timer")
@@ -169,7 +167,7 @@ struct TimerView: View {
                 }
             }
             if model.todaySessions.isEmpty {
-                Text("No pomos yet today").font(.rounded(15)).foregroundStyle(Self.subtle)
+                Text("No pomos yet today").font(Self.body).foregroundStyle(Self.subtle)
                     .frame(maxHeight: .infinity)
             } else {
                 ScrollViewReader { proxy in
@@ -178,9 +176,10 @@ struct TimerView: View {
                             ForEach(model.todaySessions) { s in
                                 HStack(alignment: .firstTextBaseline, spacing: 12) {
                                     Text(Self.timeFormat.string(from: s.startedAt))
-                                        .font(.rounded(14).monospacedDigit()).foregroundStyle(Self.subtle)
-                                        .frame(width: 66, alignment: .leading)
-                                    Text(s.purpose).font(.rounded(15)).foregroundStyle(Self.ink)
+                                        .font(Self.body.monospacedDigit()).foregroundStyle(Self.subtle)
+                                        .lineLimit(1).fixedSize()
+                                        .frame(width: 76, alignment: .leading)
+                                    Text(s.purpose).font(Self.body).foregroundStyle(Self.ink)
                                         .lineLimit(1).truncationMode(.tail)
                                     Spacer(minLength: 0)
                                 }
@@ -207,11 +206,10 @@ struct TimerView: View {
         return Button { model.showingToday = false } label: {
             HStack(spacing: 8) {
                 Circle().fill(color).frame(width: 8, height: 8)
-                    .opacity(r < 0 && !paused ? pulse : 1)
                 Text(phase.label + (paused ? " · paused" : ""))
-                    .font(.rounded(14, .medium)).foregroundStyle(Self.subtle)
+                    .font(Self.bodyMedium).foregroundStyle(Self.subtle)
                 Spacer()
-                Text(format(r)).font(.rounded(14, .medium).monospacedDigit()).foregroundStyle(color)
+                Text(format(r) + " min").font(Self.bodyMedium.monospacedDigit()).foregroundStyle(color)
             }
             .padding(.horizontal, 14).padding(.vertical, 9)
             .background(Capsule().fill(Color.black.opacity(0.04)))
@@ -231,15 +229,16 @@ struct TimerView: View {
         let finishing = phase == .rest || phase == .rest_break
         return VStack(spacing: 12) {
             Text(phase.label.uppercased() + (paused ? " · PAUSED" : over ? " · OVER" : ""))
-                .font(.rounded(13, .bold)).tracking(1.8).foregroundStyle(shown)
-            clock(progress: progress, accent: shown, timeColor: over ? accent : Self.ink,
+                .font(Self.label).tracking(1.8).foregroundStyle(shown)
+            clock(progress: progress, accent: shown, timeColor: Self.ink,
                   time: format(r), icon: paused ? "play.fill" : "pause.fill",
-                  dim: paused, pulseRing: over && !paused, action: model.togglePause)
+                  dim: paused, action: model.togglePause)
             purposeLine(model.engine.session?.purpose)
             todayText
             switch phase {
-            case .focus: primary("Recall", Phase.recall.color, model.startRecall)
-            case .recall: primary("Rest", Phase.rest.color, model.startRest)
+            // The button wears the current phase's colour (orange in overtime), like the ring.
+            case .focus: primary("Recall", accent, model.startRecall)
+            case .recall: primary("Rest", accent, model.startRest)
             default: primary("Done", accent, model.end)
             }
             if finishing {
@@ -253,14 +252,14 @@ struct TimerView: View {
     /// The running session's purpose; an empty line of the same height otherwise,
     /// so the today line and buttons sit in the same place on every screen.
     private func purposeLine(_ purpose: String?) -> some View {
-        Text(purpose ?? " ").font(.rounded(16, .medium)).foregroundStyle(Self.ink)
+        Text(purpose ?? " ").font(Self.bodyMedium).foregroundStyle(Self.ink)
             .lineLimit(1).truncationMode(.tail)
             .help(purpose ?? "")
     }
 
     private func textButton(_ t: String, _ action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Text(t).font(.rounded(14, .medium)).foregroundStyle(Self.subtle)
+            Text(t).font(Self.bodyMedium).foregroundStyle(Self.subtle)
         }
         .buttonStyle(.plain)
     }
@@ -275,8 +274,9 @@ struct TimerView: View {
         Button(t, action: action).buttonStyle(PillButtonStyle(tint: tint, prominent: true, width: 150))
     }
 
+    /// Whole minutes, no seconds, always rounded up: 30s left reads "1", and the first minute of
+    /// overtime reads "+1". So the clock steps 2 → 1 → +1 → +2 and never shows a bare 0.
     private func format(_ s: TimeInterval) -> String {
-        let n = Int(abs(s).rounded(.up))
-        return String(format: "%@%d:%02d", s < 0 ? "+" : "", n / 60, n % 60)
+        s > 0 ? "\(Int((s / 60).rounded(.up)))" : "+\(max(1, Int((-s / 60).rounded(.up))))"
     }
 }
