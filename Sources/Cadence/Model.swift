@@ -22,7 +22,6 @@ final class Model: ObservableObject {
     @Published private(set) var launchAtLogin = false
     @Published private(set) var loginNote: String?
     @Published var todayCount = 0
-    @Published var todayTotal = 0
 
     /// Finished sessions whose write failed; retried on the next save so nothing is dropped silently.
     private var unsaved: [Session] = []
@@ -117,7 +116,6 @@ final class Model: ObservableObject {
             notify("Some history couldn't be read", body: "\(loaded.skipped) unreadable line(s) in \(store.url.lastPathComponent) were skipped. The file was not changed.")
         }
         let today = (loaded.sessions + unsaved).filter { Calendar.current.isDateInToday($0.startedAt) }
-        todayTotal = today.count
         todayCount = today.filter(\.completed).count
     }
 

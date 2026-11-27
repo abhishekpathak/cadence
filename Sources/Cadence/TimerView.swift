@@ -139,7 +139,7 @@ struct TimerView: View {
     }
 
     private var todayText: some View {
-        Text("\(model.todayCount) of \(model.todayTotal) pomos today")
+        Text("\(model.todayCount) \(model.todayCount == 1 ? "pomo" : "pomos") today")
             .font(.rounded(16, .medium)).foregroundStyle(Self.subtle)
     }
 

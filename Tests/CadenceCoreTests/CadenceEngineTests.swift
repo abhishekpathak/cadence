@@ -24,13 +24,40 @@ final class Harness {
         #expect(h.finished[0].completed)
     }
 
-    @Test func anyDurationCountsIfAllPhasesRan() {
+    @Test func focusAloneCounts() {
         let h = Harness(), e = h.engine
-        e.startFocus(purpose: "x"); h.advance(1)
-        e.startRecall(); h.advance(60)
-        e.startRest(); h.advance(1)
+        e.startFocus(purpose: "x"); h.advance(10)
         e.endCurrent()
+        #expect(h.finished.count == 1)
         #expect(h.finished[0].completed)
+        #expect(h.finished[0].phases.map(\.phase) == [.focus])
+    }
+
+    @Test func focusThenBreakCounts() {
+        let h = Harness(), e = h.engine
+        e.startFocus(purpose: "x"); h.advance(25)
+        e.startBreak()
+        #expect(h.finished.count == 1)
+        #expect(h.finished[0].completed)
+        #expect(e.active?.phase == .rest_break)
+    }
+
+    @Test func shortFocusIsNotRecorded() {
+        let h = Harness(), e = h.engine
+        e.startFocus(purpose: "x"); h.advance(9.9)
+        e.startRecall(); h.advance(5)
+        e.startRest(); h.advance(5)
+        e.endCurrent()
+        #expect(h.finished.isEmpty)
+    }
+
+    @Test func pausedFocusTimeDoesNotCountTowardMinimum() {
+        let h = Harness(), e = h.engine
+        e.startFocus(purpose: "x"); h.advance(5)
+        e.pause(); h.advance(30)
+        e.resume(); h.advance(4)
+        e.endCurrent()
+        #expect(h.finished.isEmpty)
     }
 
     @Test func pausedTimeDoesNotCount() {
@@ -53,15 +80,6 @@ final class Harness {
         h.advance(5)
         #expect(abs(e.remaining! - 45 * 60) < 0.001)
         #expect(e.duration(of: .focus) == 10 * 60)
-    }
-
-    @Test func abandonedAfterFocusFails() {
-        let h = Harness(), e = h.engine
-        e.startFocus(purpose: "x"); h.advance(25)
-        e.startBreak()
-        #expect(h.finished.count == 1)
-        #expect(!h.finished[0].completed)
-        #expect(e.active?.phase == .rest_break)
     }
 
     @Test func standaloneRecallIsNotRecorded() {

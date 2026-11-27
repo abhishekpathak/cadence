@@ -13,13 +13,18 @@ public final class CadenceEngine {
     }
 
     public private(set) var active: Active?
-    /// The in-progress pomodoro (focus → recall → rest), if any.
+    /// The in-progress session (focus, optionally followed by recall → rest), if any.
     public private(set) var session: Session?
 
     public private(set) var pausedAt: Date?
     public var isPaused: Bool { active != nil && pausedAt != nil }
 
     public var onSessionFinished: ((Session) -> Void)?
+
+    /// Focus at least this long (paused time excluded) earns a pomodoro; shorter sessions aren't recorded.
+    public static let minimumFocus: TimeInterval = 10 * 60
+    /// Unpaused time spent in the current session's focus phase.
+    private var focusedTime: TimeInterval = 0
 
     private let now: () -> Date
     /// Divides all durations; lets tests and debug runs compress minutes into seconds.
@@ -50,10 +55,11 @@ public final class CadenceEngine {
         finishSession()
         let t = now()
         session = Session(purpose: purpose, phases: [PhaseRecord(phase: .focus, start: t)])
+        focusedTime = 0
         active = Active(phase: .focus, start: t, duration: duration(of: .focus))
     }
 
-    /// Recall/rest only count toward a pomodoro when they follow in order.
+    /// Recall/rest are recorded in the session only when they follow in order.
     public func startRecall() { startFollowUp(.recall) }
     public func startRest() { startFollowUp(.rest) }
 
@@ -63,7 +69,7 @@ public final class CadenceEngine {
         active = Active(phase: .rest_break, start: now(), duration: duration(of: .rest_break))
     }
 
-    /// Ends the active phase. Ending a rest completes the pomodoro.
+    /// Ends the active phase and finishes the session in progress.
     public func endCurrent() {
         closeActive()
         finishSession()
@@ -91,7 +97,7 @@ public final class CadenceEngine {
         if session != nil, isNext(phase, after: previous) {
             session?.phases.append(PhaseRecord(phase: phase, start: t))
         } else {
-            finishSession() // out of order → the pomodoro in progress fails
+            finishSession() // out of order → the session in progress ends here
         }
         active = Active(phase: phase, start: t, duration: duration(of: phase))
     }
@@ -101,8 +107,11 @@ public final class CadenceEngine {
     }
 
     private func closeActive() {
-        pausedAt = nil
+        defer { pausedAt = nil }
         guard let a = active else { return }
+        if a.phase == .focus, session != nil {
+            focusedTime = (pausedAt ?? now()).timeIntervalSince(a.start)
+        }
         if session != nil, let i = session!.phases.indices.last, session!.phases[i].phase == a.phase {
             session!.phases[i].end = now()
         }
@@ -111,13 +120,9 @@ public final class CadenceEngine {
 
     private func finishSession() {
         guard var s = session else { return }
-        s.completed = Self.isSuccessful(s)
         session = nil
+        guard focusedTime >= Self.minimumFocus / scale else { return } // too short: not recorded
+        s.completed = true
         onSessionFinished?(s)
-    }
-
-    /// Success: focus, recall and rest all ran, in that order.
-    public static func isSuccessful(_ s: Session) -> Bool {
-        s.phases.map(\.phase) == [.focus, .recall, .rest]
     }
 }

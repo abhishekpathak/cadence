@@ -4,7 +4,7 @@ A small macOS focus timer built around a three-step cycle instead of a bare coun
 
 **Focus (25) → Active recall (5) → Restful wakefulness (5)**
 
-A pomodoro counts as successful once you've gone through all three steps. A separate 15-minute break is available between pomodoros. Durations are configurable.
+A pomodoro counts once you've focused for at least 10 minutes (paused time doesn't count); recall and rest are encouraged but optional. Shorter focus sessions aren't recorded. A separate 15-minute break is available between pomodoros. Durations are configurable.
 
 The timer lives in a small, borderless, always-on-top window. Hover the clock to pause or resume.
 
