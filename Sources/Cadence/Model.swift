@@ -21,7 +21,6 @@ final class Model: ObservableObject {
     let dislodge: DislodgeAction = NoDislodge()
 
     @Published var tick = Date()
-    @Published var prompting = false
     @Published var purpose = ""
     @Published var hoveringClock = false
     @Published private(set) var minutes: [Phase: Int] = [:]
@@ -139,7 +138,7 @@ final class Model: ObservableObject {
         tick = Date()
         guard let a = engine.active, let r = engine.remaining, r <= 0, notifiedFor != a.id else { return }
         notifiedFor = a.id
-        notify("\(a.phase.label) time is up", body: a.phase == .rest || a.phase == .rest_break ? "Well done." : "Move to the next step.")
+        notify("\(a.phase.label) time is up", body: a.phase == .rest ? "Well done." : "Move to the next step.")
         dislodge.phaseTimeUp(a.phase)
     }
 
@@ -151,16 +150,14 @@ final class Model: ObservableObject {
     }
 
     // Actions
-    func beginFocusPrompt() { showingToday = false; prompting = true }
     func startFocus() {
-        prompting = false
+        showingToday = false
         engine.startFocus(purpose: purpose.isEmpty ? "Untitled" : purpose)
         purpose = ""
         tick = Date()
     }
-    func startRecall() { showingToday = false; engine.startRecall(); tick = Date() }
+    func startReview() { showingToday = false; engine.startReview(); tick = Date() }
     func startRest() { showingToday = false; engine.startRest(); tick = Date() }
-    func startBreak() { showingToday = false; prompting = false; engine.startBreak(); tick = Date() }
     func togglePause() { engine.togglePause(); tick = Date() }
-    func end() { showingToday = false; prompting = false; engine.endCurrent(); tick = Date() }
+    func end() { showingToday = false; engine.endCurrent(); tick = Date() }
 }

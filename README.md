@@ -2,9 +2,9 @@
 
 A small macOS focus timer built around a three-step cycle instead of a bare countdown:
 
-**Focus (25) → Active recall (5) → Restful wakefulness (5)**
+**Focus (25) → Review (5) → Restful wakefulness (5)**
 
-A pomodoro counts once you've focused for at least 10 minutes (paused time doesn't count); recall and rest are encouraged but optional. Shorter focus sessions aren't recorded. A separate 15-minute break is available between pomodoros. Durations are configurable.
+A pomodoro counts once you've focused for at least 10 minutes (paused time doesn't count); review and rest are encouraged but optional. Shorter focus sessions aren't recorded. Durations are configurable.
 
 The timer lives in a small, borderless, always-on-top window. Hover the clock to pause or resume.
 
@@ -22,16 +22,7 @@ The app is ad-hoc signed, not notarised, so on first launch macOS may block it. 
 
 ## Use
 
-Starting a focus session asks what it's for. Move through the steps from the window, or with global hotkeys:
-
-| Hotkey | Action |
-|---|---|
-| ⌃⌥P | Start focus |
-| ⌃⌥R | Start recall |
-| ⌃⌥E | Start rest |
-| ⌃⌥B | Start break |
-| ⌃⌥Space | Pause / resume |
-| ⌃⌥X | End the current phase |
+The start screen asks what the session is for; type it and press Return (or click Start) to start. Click **Done** to move on through each step.
 
 Click the 🍅 menu bar icon for **Settings…** (phase lengths in whole minutes, start at login), **Show / Hide** and **Quit**.
 
@@ -56,7 +47,7 @@ The timer logic lives in `Sources/CadenceCore` and is unit-tested; the app is in
 
 ## Status
 
-Personal project, early. Not built yet: a "gentle dislodge" nudge when focus ends (there is a no-op `DislodgeAction` hook for it) and screensaver-style recall/rest overlays.
+Personal project, early. Not built yet: a "gentle dislodge" nudge when focus ends (there is a no-op `DislodgeAction` hook for it) and screensaver-style review/rest overlays.
 
 ## License
 

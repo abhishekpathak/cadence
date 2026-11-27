@@ -14,9 +14,8 @@ struct SettingsView: View {
                 .font(.rounded(18, .semibold)).foregroundStyle(Self.ink)
             VStack(spacing: 12) {
                 row(.focus)
-                row(.recall)
+                row(.review)
                 row(.rest)
-                row(.rest_break)
             }
             Text("Whole minutes, \(Model.minuteRange.lowerBound)–\(Model.minuteRange.upperBound). Changes apply from the next phase you start.")
                 .font(.rounded(12)).foregroundStyle(Self.subtle)

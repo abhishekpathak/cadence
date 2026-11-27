@@ -61,10 +61,8 @@ enum Snapshot {
 
         shot("1-idle")
         discShot("d1-idle")
-        model.hoveringClock = true; shot("1b-idle-hover"); model.hoveringClock = false
-        model.prompting = true; model.purpose = "Write chapter 3"
+        model.purpose = "Write chapter 3"
         shot("2-prompt")
-        model.prompting = false; model.purpose = "Write chapter 3"
         model.startFocus(); advance(10)
         shot("3-focus")
         discShot("d3-focus")
@@ -77,16 +75,12 @@ enum Snapshot {
         advance(18)
         shot("4-focus-over")
         discShot("d4-focus-over")
-        engine.startRecall(); advance(2)
-        shot("5-recall")
-        discShot("d5-recall")
+        engine.startReview(); advance(2)
+        shot("5-review")
+        discShot("d5-review")
         engine.startRest(); advance(1)
         shot("6-rest")
         discShot("d6-rest")
-        engine.startBreak(); advance(1)
-        shot("7-break")
-        discShot("d7-break")
-        model.showingToday = true; shot("7b-today-break"); model.showingToday = false
         shotSettings()
     }
 }

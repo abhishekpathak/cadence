@@ -5,9 +5,8 @@ extension Phase {
     var color: Color {
         switch self {
         case .focus: return Color(red: 0.92, green: 0.34, blue: 0.28)
-        case .recall: return Color(red: 0.25, green: 0.52, blue: 0.96)
+        case .review: return Color(red: 0.25, green: 0.52, blue: 0.96)
         case .rest: return Color(red: 0.20, green: 0.70, blue: 0.45)
-        case .rest_break: return Color(red: 0.55, green: 0.45, blue: 0.88)
         }
     }
 }
@@ -127,7 +126,7 @@ struct TimerView: View {
 
     static let width: CGFloat = 280
     /// One size for every state, matching the running layout.
-    static let height: CGFloat = 341
+    static let height: CGFloat = 343
     private static let overflowColor = Color.orange
     private static let ink = Color(white: 0.12)
     private static let subtle = Color(white: 0.45)
@@ -141,9 +140,7 @@ struct TimerView: View {
 
     var body: some View {
         VStack(spacing: 12) {
-            if model.prompting {
-                prompt
-            } else if model.showingToday {
+            if model.showingToday {
                 todayList
             } else if let a = model.engine.active, let r = model.engine.remaining {
                 running(a.phase, remaining: r)
@@ -160,30 +157,32 @@ struct TimerView: View {
 
     // MARK: States
 
-    private var prompt: some View {
-        VStack(spacing: 12) {
-            Text("What is this pomodoro for?")
-                .font(.rounded(15, .semibold)).foregroundStyle(Self.ink)
-            TextField("Purpose", text: $model.purpose)
-                .textFieldStyle(.roundedBorder).font(Self.body).controlSize(.large)
-                .focused($focused)
-                .onSubmit { model.startFocus() }
-                .onAppear { focused = true }
-            primary("Focus", Phase.focus.color, model.startFocus)
-            textButton("Cancel") { model.prompting = false }
-        }
-    }
-
+    /// The start screen: one question in the middle, answered by typing. Return or Focus starts
+    /// the timer straight away. The today line and buttons sit where they do on the running screen.
     private var idle: some View {
         VStack(spacing: 12) {
-            Text("READY").font(Self.label).tracking(1.8).foregroundStyle(Self.subtle)
-            clock(progress: 0, accent: Phase.focus.color, timeColor: Self.ink.opacity(0.5),
-                  time: format(model.engine.duration(of: .focus)), icon: "play.fill",
-                  remaining: model.engine.duration(of: .focus), phaseColor: Phase.focus.color,
-                  action: model.beginFocusPrompt)
-            infoLine(nil)
-            primary("Focus", Phase.focus.color, model.beginFocusPrompt)
-            textButton("Break", model.startBreak)
+            VStack(spacing: 0) {
+                Spacer(minLength: 0)
+                TextField("", text: $model.purpose, prompt: Text("What’s the focus?").foregroundColor(Self.subtle.opacity(0.7)))
+                    .textFieldStyle(.plain)
+                    .font(.rounded(22, .medium)).foregroundStyle(Self.ink)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(1)
+                    .focused($focused)
+                    .onSubmit { model.startFocus() }
+                    .onAppear { focused = true }
+                    .padding(.horizontal, 14).padding(.vertical, 12)
+                    .background(RoundedRectangle(cornerRadius: 14).fill(Color.black.opacity(focused ? 0.05 : 0.035)))
+                    .overlay(RoundedRectangle(cornerRadius: 14)
+                        .strokeBorder(Phase.focus.color.opacity(focused ? 0.45 : 0), lineWidth: 1.5))
+                    .animation(.easeOut(duration: 0.15), value: focused)
+                    .contentShape(Rectangle())
+                    .onTapGesture { focused = true }
+                Spacer(minLength: 0)
+            }
+            .frame(maxHeight: .infinity)
+            infoLine
+            primary("Start", Phase.focus.color, model.startFocus)
         }
     }
 
@@ -232,23 +231,16 @@ struct TimerView: View {
         .animation(.easeOut(duration: 0.15), value: model.hoveringClock)
     }
 
-    /// "Purpose · N pomos today" while a session runs, just "N pomos today" otherwise.
-    /// Sits in the same place on every timer screen; clicking it opens today's list.
-    private func infoLine(_ purpose: String?) -> some View {
+    /// "N pomos today", just above the main button on every timer screen; clicking it opens today's list.
+    private var infoLine: some View {
         let today = "\(model.todayCount) \(model.todayCount == 1 ? "pomo" : "pomos") today"
         return Button { model.showingToday = true } label: {
-            HStack(spacing: 0) {
-                if let purpose {
-                    Text(purpose).lineLimit(1).truncationMode(.tail) // the purpose gives way, never the count
-                    Text(" · ")
-                }
-                Text(today).fixedSize()
-            }
-            .font(Self.bodyMedium).foregroundStyle(Self.subtle)
-            .contentShape(Rectangle())
+            Text(today)
+                .font(Self.bodyMedium).foregroundStyle(Self.subtle)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .help(purpose.map { "\($0)\nShow today's pomos" } ?? "Show today's pomos")
+        .help("Show today's pomos")
     }
 
     private static let timeFormat: DateFormatter = {
@@ -329,7 +321,6 @@ struct TimerView: View {
         let shown = paused ? Self.subtle : accent
         let total = model.engine.active?.duration ?? model.engine.duration(of: phase)
         let progress = min(max(1 - r / total, 0), 1)
-        let finishing = phase == .rest || phase == .rest_break
         return VStack(spacing: 12) {
             Text(phase.label.uppercased() + (paused ? " · PAUSED" : over ? " · OVER" : ""))
                 .font(Self.label).tracking(1.8).foregroundStyle(shown)
@@ -337,27 +328,24 @@ struct TimerView: View {
                   time: format(r), icon: paused ? "play.fill" : "pause.fill",
                   remaining: r, phaseColor: phase.color,
                   dim: paused, action: model.togglePause)
-            infoLine(model.engine.session?.purpose)
-            switch phase {
-            // The button wears the current phase's colour (orange in overtime), like the ring.
-            case .focus: primary("Recall", accent, model.startRecall)
-            case .recall: primary("Rest", accent, model.startRest)
-            default: primary("Done", accent, model.end)
-            }
-            if finishing {
-                Color.clear.frame(height: 17) // keeps the layout identical to the other phases
-            } else {
-                textButton("Stop", model.end)
+            // What this session is for, on its own line; a session always has one ("Untitled" if left blank).
+            Text(model.engine.session?.purpose ?? " ")
+                .font(Self.bodyMedium).foregroundStyle(Self.subtle) // same voice as the today line below
+                .lineLimit(1).truncationMode(.tail)
+                .help(model.engine.session?.purpose ?? "")
+            infoLine
+            // One button in every phase, at the bottom: it finishes this step and moves to the next
+            // (focus → review → rest → end). It wears the phase's colour (orange in overtime), like the ring.
+            primary("Done", accent) {
+                switch phase {
+                case .focus: model.startReview()
+                case .review: model.startRest()
+                default: model.end()
+                }
             }
         }
     }
 
-    private func textButton(_ t: String, _ action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Text(t).font(Self.bodyMedium).foregroundStyle(Self.subtle)
-        }
-        .buttonStyle(.plain)
-    }
 
     private func pill(_ t: String, _ tint: Color, prominent: Bool = false, wide: Bool = false,
                       _ action: @escaping () -> Void) -> some View {

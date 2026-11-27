@@ -1,24 +1,23 @@
 import Foundation
 
 public enum Phase: String, Codable, CaseIterable {
-    case focus, recall, rest, rest_break = "break"
+    /// Raw values are what's stored in history and settings, so `review` keeps its old name, "recall".
+    case focus, review = "recall", rest
 
     /// Nominal length in seconds, before any time scaling.
     public var nominal: TimeInterval {
         switch self {
         case .focus: return 25 * 60
-        case .recall: return 5 * 60
+        case .review: return 5 * 60
         case .rest: return 5 * 60
-        case .rest_break: return 15 * 60
         }
     }
 
     public var label: String {
         switch self {
         case .focus: return "Focus"
-        case .recall: return "Recall"
+        case .review: return "Review"
         case .rest: return "Rest"
-        case .rest_break: return "Break"
         }
     }
 }

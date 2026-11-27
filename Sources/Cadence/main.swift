@@ -1,6 +1,5 @@
 import AppKit
 import SwiftUI
-import Carbon.HIToolbox
 import Combine
 
 /// Borderless panel that can still take keyboard input (for the purpose field).
@@ -49,17 +48,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(.separator())
         menu.addItem(withTitle: "Quit Cadence", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         statusItem.menu = menu
-
-        // ⌃⌥ + P / R / E / B / X
-        Hotkeys.register(key: kVK_ANSI_P, id: 1) { [self] in
-            panel.orderFrontRegardless(); NSApp.activate(ignoringOtherApps: true); panel.makeKey()
-            model.beginFocusPrompt()
-        }
-        Hotkeys.register(key: kVK_ANSI_R, id: 2) { [self] in model.startRecall() }
-        Hotkeys.register(key: kVK_ANSI_E, id: 3) { [self] in model.startRest() }
-        Hotkeys.register(key: kVK_ANSI_B, id: 4) { [self] in model.startBreak() }
-        Hotkeys.register(key: kVK_ANSI_X, id: 5) { [self] in model.end() }
-        Hotkeys.register(key: kVK_Space, id: 6) { [self] in model.togglePause() }
     }
 
     func fitToContent() {

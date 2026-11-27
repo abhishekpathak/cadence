@@ -13,7 +13,7 @@ public final class CadenceEngine {
     }
 
     public private(set) var active: Active?
-    /// The in-progress session (focus, optionally followed by recall → rest), if any.
+    /// The in-progress session (focus, optionally followed by review → rest), if any.
     public private(set) var session: Session?
 
     public private(set) var pausedAt: Date?
@@ -23,6 +23,9 @@ public final class CadenceEngine {
 
     /// Focus at least this long (paused time excluded) earns a pomodoro; shorter sessions aren't recorded.
     public static let minimumFocus: TimeInterval = 10 * 60
+    /// Review or rest shorter than this (paused time excluded) is dropped from the session:
+    /// it's almost always a click-through to end the session, not a real step.
+    public static let minimumFollowUp: TimeInterval = 30
     /// Unpaused time spent in the current session's focus phase.
     private var focusedTime: TimeInterval = 0
 
@@ -59,15 +62,9 @@ public final class CadenceEngine {
         active = Active(phase: .focus, start: t, duration: duration(of: .focus))
     }
 
-    /// Recall/rest are recorded in the session only when they follow in order.
-    public func startRecall() { startFollowUp(.recall) }
+    /// Review/rest are recorded in the session only when they follow in order.
+    public func startReview() { startFollowUp(.review) }
     public func startRest() { startFollowUp(.rest) }
-
-    public func startBreak() {
-        closeActive()
-        finishSession()
-        active = Active(phase: .rest_break, start: now(), duration: duration(of: .rest_break))
-    }
 
     /// Ends the active phase and finishes the session in progress.
     public func endCurrent() {
@@ -103,7 +100,7 @@ public final class CadenceEngine {
     }
 
     private func isNext(_ phase: Phase, after previous: Phase?) -> Bool {
-        (previous == .focus && phase == .recall) || (previous == .recall && phase == .rest)
+        (previous == .focus && phase == .review) || (previous == .review && phase == .rest)
     }
 
     private func closeActive() {
@@ -113,7 +110,12 @@ public final class CadenceEngine {
             focusedTime = (pausedAt ?? now()).timeIntervalSince(a.start)
         }
         if session != nil, let i = session!.phases.indices.last, session!.phases[i].phase == a.phase {
-            session!.phases[i].end = now()
+            let elapsed = (pausedAt ?? now()).timeIntervalSince(a.start) // start is shifted past pauses
+            if a.phase != .focus, elapsed < Self.minimumFollowUp / scale {
+                session!.phases.remove(at: i)
+            } else {
+                session!.phases[i].end = now()
+            }
         }
         active = nil
     }

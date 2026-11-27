@@ -17,11 +17,40 @@ final class Harness {
     @Test func fullCycleSucceeds() {
         let h = Harness(), e = h.engine
         e.startFocus(purpose: "x"); h.advance(25)
-        e.startRecall(); h.advance(5)
+        e.startReview(); h.advance(5)
         e.startRest(); h.advance(5)
         e.endCurrent()
         #expect(h.finished.count == 1)
         #expect(h.finished[0].completed)
+    }
+
+    @Test func clickedThroughReviewAndRestAreDropped() {
+        let h = Harness(), e = h.engine
+        e.startFocus(purpose: "x"); h.advance(25)
+        e.startReview(); h.advance(0.2)
+        e.startRest(); h.advance(0.2)
+        e.endCurrent()
+        #expect(h.finished.count == 1)
+        #expect(h.finished[0].phases.map(\.phase) == [.focus])
+    }
+
+    @Test func reviewAndRestOfThirtySecondsCount() {
+        let h = Harness(), e = h.engine
+        e.startFocus(purpose: "x"); h.advance(25)
+        e.startReview(); h.advance(0.5)
+        e.startRest(); h.advance(0.5)
+        e.endCurrent()
+        #expect(h.finished[0].phases.map(\.phase) == [.focus, .review, .rest])
+    }
+
+    @Test func pausedTimeDoesNotCountTowardFollowUpMinimum() {
+        let h = Harness(), e = h.engine
+        e.startFocus(purpose: "x"); h.advance(25)
+        e.startReview(); h.advance(0.2)
+        e.pause(); h.advance(5); e.resume()
+        e.startRest(); h.advance(5)
+        e.endCurrent()
+        #expect(h.finished[0].phases.map(\.phase) == [.focus, .rest])
     }
 
     @Test func focusAloneCounts() {
@@ -33,19 +62,10 @@ final class Harness {
         #expect(h.finished[0].phases.map(\.phase) == [.focus])
     }
 
-    @Test func focusThenBreakCounts() {
-        let h = Harness(), e = h.engine
-        e.startFocus(purpose: "x"); h.advance(25)
-        e.startBreak()
-        #expect(h.finished.count == 1)
-        #expect(h.finished[0].completed)
-        #expect(e.active?.phase == .rest_break)
-    }
-
     @Test func shortFocusIsNotRecorded() {
         let h = Harness(), e = h.engine
         e.startFocus(purpose: "x"); h.advance(9.9)
-        e.startRecall(); h.advance(5)
+        e.startReview(); h.advance(5)
         e.startRest(); h.advance(5)
         e.endCurrent()
         #expect(h.finished.isEmpty)
@@ -82,9 +102,9 @@ final class Harness {
         #expect(e.duration(of: .focus) == 10 * 60)
     }
 
-    @Test func standaloneRecallIsNotRecorded() {
+    @Test func standaloneReviewIsNotRecorded() {
         let h = Harness(), e = h.engine
-        e.startRecall(); h.advance(5)
+        e.startReview(); h.advance(5)
         e.endCurrent()
         #expect(h.finished.isEmpty)
     }
