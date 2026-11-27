@@ -47,7 +47,7 @@ struct TimerView: View {
 
     static let width: CGFloat = 280
     /// One size for every state, matching the running layout.
-    static let height: CGFloat = 366
+    static let height: CGFloat = 373
     private static let overflowColor = Color.orange
     private static let ink = Color(white: 0.12)
     private static let subtle = Color(white: 0.45)
@@ -57,6 +57,8 @@ struct TimerView: View {
         VStack(spacing: 12) {
             if model.prompting {
                 prompt
+            } else if model.showingToday {
+                todayList
             } else if let a = model.engine.active, let r = model.engine.remaining {
                 running(a.phase, remaining: r)
             } else {
@@ -103,8 +105,8 @@ struct TimerView: View {
             clock(progress: 0, accent: Phase.focus.color, timeColor: Self.ink.opacity(0.5),
                   time: format(model.engine.duration(of: .focus)), icon: "play.fill",
                   action: model.beginFocusPrompt)
+            purposeLine(nil)
             todayText
-            Color.clear.frame(height: 14) // stands in for the dots row, so buttons line up across screens
             primary("Start focus", Phase.focus.color, model.beginFocusPrompt)
             textButton("Take a break", model.startBreak)
         }
@@ -138,9 +140,85 @@ struct TimerView: View {
         .animation(.easeOut(duration: 0.15), value: model.hoveringClock)
     }
 
+    /// Opens today's list.
     private var todayText: some View {
-        Text("\(model.todayCount) \(model.todayCount == 1 ? "pomo" : "pomos") today")
-            .font(.rounded(16, .medium)).foregroundStyle(Self.subtle)
+        Button { model.showingToday = true } label: {
+            Text("\(model.todayCount) \(model.todayCount == 1 ? "pomo" : "pomos") today")
+                .font(.rounded(16, .medium)).foregroundStyle(Self.subtle)
+        }
+        .buttonStyle(.plain)
+        .help("Show today's pomos")
+    }
+
+    private static let timeFormat: DateFormatter = {
+        let f = DateFormatter(); f.dateStyle = .none; f.timeStyle = .short; return f
+    }()
+
+    /// Today's pomos, swapped in place of the timer at the same window size.
+    private var todayList: some View {
+        VStack(spacing: 12) {
+            ZStack {
+                Text("TODAY").font(.rounded(13, .bold)).tracking(1.8).foregroundStyle(Self.subtle)
+                HStack {
+                    Button { model.showingToday = false } label: {
+                        Image(systemName: "chevron.left").font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(Self.subtle).frame(width: 28, height: 22).contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain).help("Back to the timer")
+                    Spacer()
+                }
+            }
+            if model.todaySessions.isEmpty {
+                Text("No pomos yet today").font(.rounded(15)).foregroundStyle(Self.subtle)
+                    .frame(maxHeight: .infinity)
+            } else {
+                ScrollViewReader { proxy in
+                    ScrollView(showsIndicators: true) {
+                        VStack(alignment: .leading, spacing: 0) {
+                            ForEach(model.todaySessions) { s in
+                                HStack(alignment: .firstTextBaseline, spacing: 12) {
+                                    Text(Self.timeFormat.string(from: s.startedAt))
+                                        .font(.rounded(14).monospacedDigit()).foregroundStyle(Self.subtle)
+                                        .frame(width: 66, alignment: .leading)
+                                    Text(s.purpose).font(.rounded(15)).foregroundStyle(Self.ink)
+                                        .lineLimit(1).truncationMode(.tail)
+                                    Spacer(minLength: 0)
+                                }
+                                .padding(.vertical, 7)
+                                .help(s.purpose)
+                                .id(s.id)
+                            }
+                        }
+                    }
+                    .onAppear { if let last = model.todaySessions.last { proxy.scrollTo(last.id, anchor: .bottom) } }
+                }
+                .frame(maxHeight: .infinity)
+            }
+            if let a = model.engine.active, let r = model.engine.remaining {
+                liveStrip(a.phase, remaining: r)
+            }
+        }
+    }
+
+    /// A quiet reminder of the running timer while the list is open; tapping it goes back.
+    private func liveStrip(_ phase: Phase, remaining r: TimeInterval) -> some View {
+        let paused = model.engine.isPaused
+        let color = paused ? Self.subtle : (r < 0 ? Self.overflowColor : phase.color)
+        return Button { model.showingToday = false } label: {
+            HStack(spacing: 8) {
+                Circle().fill(color).frame(width: 8, height: 8)
+                    .opacity(r < 0 && !paused ? pulse : 1)
+                Text(phase.label + (paused ? " · paused" : ""))
+                    .font(.rounded(14, .medium)).foregroundStyle(Self.subtle)
+                Spacer()
+                Text(format(r)).font(.rounded(14, .medium).monospacedDigit()).foregroundStyle(color)
+            }
+            .padding(.horizontal, 14).padding(.vertical, 9)
+            .background(Capsule().fill(Color.black.opacity(0.04)))
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .help("Back to the timer")
     }
 
     private func running(_ phase: Phase, remaining r: TimeInterval) -> some View {
@@ -157,13 +235,8 @@ struct TimerView: View {
             clock(progress: progress, accent: shown, timeColor: over ? accent : Self.ink,
                   time: format(r), icon: paused ? "play.fill" : "pause.fill",
                   dim: paused, pulseRing: over && !paused, action: model.togglePause)
-            if let s = model.engine.session {
-                Text(s.purpose).font(.rounded(16, .medium)).foregroundStyle(Self.ink).lineLimit(1)
-                dots(for: s)
-            } else {
-                todayText
-                Color.clear.frame(height: 14)
-            }
+            purposeLine(model.engine.session?.purpose)
+            todayText
             switch phase {
             case .focus: primary("Recall", Phase.recall.color, model.startRecall)
             case .recall: primary("Rest", Phase.rest.color, model.startRest)
@@ -177,19 +250,12 @@ struct TimerView: View {
         }
     }
 
-    /// Focus → recall → rest: filled = done, dark centre = current, hollow = upcoming.
-    private func dots(for s: Session) -> some View {
-        let reached = s.phases.count
-        return HStack(spacing: 8) {
-            ForEach(0..<3, id: \.self) { i in
-                ZStack {
-                    Circle().stroke(Self.subtle.opacity(0.5), lineWidth: 2)
-                    if i < reached - 1 { Circle().fill(Self.subtle) }
-                    else if i == reached - 1 { Circle().fill(Self.ink).padding(3) }
-                }
-                .frame(width: 14, height: 14)
-            }
-        }
+    /// The running session's purpose; an empty line of the same height otherwise,
+    /// so the today line and buttons sit in the same place on every screen.
+    private func purposeLine(_ purpose: String?) -> some View {
+        Text(purpose ?? " ").font(.rounded(16, .medium)).foregroundStyle(Self.ink)
+            .lineLimit(1).truncationMode(.tail)
+            .help(purpose ?? "")
     }
 
     private func textButton(_ t: String, _ action: @escaping () -> Void) -> some View {

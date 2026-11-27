@@ -9,7 +9,20 @@ enum Snapshot {
         try? FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
         var t = Date(timeIntervalSince1970: 1_000_000)
         let engine = CadenceEngine(now: { t })
-        let model = Model(engine: engine)
+        // Scratch history, so snapshots never touch the real sessions file. Dated today, so the list shows them.
+        let history = URL(fileURLWithPath: dir).appendingPathComponent("sessions.jsonl")
+        try? FileManager.default.removeItem(at: history)
+        let store = Store(url: history)
+        let today = Calendar.current.startOfDay(for: Date())
+        for (h, purpose) in [(9.0, "Inbox zero"), (9.75, "Write chapter 2 outline"), (11.0, "Review the pull request for the new sessions log format"),
+                             (13.5, "Reading: spaced repetition paper"), (14.25, "Refactor engine"), (15.0, "Plan next week"),
+                             (16.0, "Email follow-ups"), (17.0, "Sketch onboarding")] {
+            let start = today.addingTimeInterval(h * 3600)
+            var s = Session(purpose: purpose, phases: [PhaseRecord(phase: .focus, start: start, end: start.addingTimeInterval(1500))])
+            s.completed = true
+            try? store.append(s)
+        }
+        let model = Model(engine: engine, store: store)
         model.tick = t
 
         func shot(_ name: String) {
@@ -51,6 +64,7 @@ enum Snapshot {
         engine.pause(); shot("3c-paused-hover")
         model.hoveringClock = false; shot("3d-paused")
         engine.resume()
+        model.showingToday = true; shot("3e-today-live"); model.showingToday = false
         advance(18)
         shot("4-focus-over")
         engine.startRecall(); advance(2)
@@ -59,6 +73,7 @@ enum Snapshot {
         shot("6-rest")
         engine.startBreak(); advance(1)
         shot("7-break")
+        model.showingToday = true; shot("7b-today-break"); model.showingToday = false
         shotSettings()
     }
 }

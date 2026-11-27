@@ -10,7 +10,7 @@ struct NoDislodge: DislodgeAction { func phaseTimeUp(_ phase: Phase) {} }
 
 final class Model: ObservableObject {
     let engine: CadenceEngine
-    let store = Store()
+    let store: Store
     let dislodge: DislodgeAction = NoDislodge()
 
     @Published var tick = Date()
@@ -21,15 +21,20 @@ final class Model: ObservableObject {
     static let minuteRange = 1...240
     @Published private(set) var launchAtLogin = false
     @Published private(set) var loginNote: String?
-    @Published var todayCount = 0
+    /// Today's recorded pomos, oldest first.
+    @Published private(set) var todaySessions: [Session] = []
+    var todayCount: Int { todaySessions.count }
+    /// The window shows today's list instead of the timer. Changing phase closes it; pausing doesn't.
+    @Published var showingToday = false
 
     /// Finished sessions whose write failed; retried on the next save so nothing is dropped silently.
     private var unsaved: [Session] = []
     private var timer: Timer?
     private var notifiedFor: UUID?
 
-    /// `engine` is injectable so snapshots can drive the UI with a fake clock.
-    init(engine: CadenceEngine? = nil) {
+    /// `engine` and `store` are injectable so snapshots can drive the UI with a fake clock and scratch history.
+    init(engine: CadenceEngine? = nil, store: Store = Store()) {
+        self.store = store
         let scale = Double(ProcessInfo.processInfo.environment["CADENCE_SCALE"] ?? "") ?? 1
         self.engine = engine ?? CadenceEngine(scale: scale)
         self.engine.onSessionFinished = { [weak self] s in
@@ -116,7 +121,7 @@ final class Model: ObservableObject {
             notify("Some history couldn't be read", body: "\(loaded.skipped) unreadable line(s) in \(store.url.lastPathComponent) were skipped. The file was not changed.")
         }
         let today = (loaded.sessions + unsaved).filter { Calendar.current.isDateInToday($0.startedAt) }
-        todayCount = today.filter(\.completed).count
+        todaySessions = today.filter(\.completed).sorted { $0.startedAt < $1.startedAt }
     }
 
     private func onTick() {
@@ -135,16 +140,16 @@ final class Model: ObservableObject {
     }
 
     // Actions
-    func beginFocusPrompt() { prompting = true }
+    func beginFocusPrompt() { showingToday = false; prompting = true }
     func startFocus() {
         prompting = false
         engine.startFocus(purpose: purpose.isEmpty ? "Untitled" : purpose)
         purpose = ""
         tick = Date()
     }
-    func startRecall() { engine.startRecall(); tick = Date() }
-    func startRest() { engine.startRest(); tick = Date() }
-    func startBreak() { prompting = false; engine.startBreak(); tick = Date() }
+    func startRecall() { showingToday = false; engine.startRecall(); tick = Date() }
+    func startRest() { showingToday = false; engine.startRest(); tick = Date() }
+    func startBreak() { showingToday = false; prompting = false; engine.startBreak(); tick = Date() }
     func togglePause() { engine.togglePause(); tick = Date() }
-    func end() { prompting = false; engine.endCurrent(); tick = Date() }
+    func end() { showingToday = false; prompting = false; engine.endCurrent(); tick = Date() }
 }

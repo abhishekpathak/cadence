@@ -27,6 +27,10 @@ public struct PhaseRecord: Codable, Equatable {
     public var phase: Phase
     public var start: Date
     public var end: Date?
+
+    public init(phase: Phase, start: Date, end: Date? = nil) {
+        self.phase = phase; self.start = start; self.end = end
+    }
 }
 
 public struct Session: Codable, Equatable, Identifiable {
@@ -34,6 +38,10 @@ public struct Session: Codable, Equatable, Identifiable {
     public var purpose: String
     public var phases: [PhaseRecord]
     public var completed = false
+
+    public init(purpose: String, phases: [PhaseRecord], completed: Bool = false) {
+        self.purpose = purpose; self.phases = phases; self.completed = completed
+    }
 
     public var startedAt: Date { phases.first?.start ?? Date() }
 }
