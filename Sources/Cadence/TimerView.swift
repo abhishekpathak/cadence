@@ -47,7 +47,7 @@ struct TimerView: View {
 
     static let width: CGFloat = 280
     /// One size for every state, matching the running layout.
-    static let height: CGFloat = 373
+    static let height: CGFloat = 341
     private static let overflowColor = Color.orange
     private static let ink = Color(white: 0.12)
     private static let subtle = Color(white: 0.45)
@@ -89,7 +89,7 @@ struct TimerView: View {
                 .focused($focused)
                 .onSubmit { model.startFocus() }
                 .onAppear { focused = true }
-            primary("Start focus", Phase.focus.color, model.startFocus)
+            primary("Focus", Phase.focus.color, model.startFocus)
             textButton("Cancel") { model.prompting = false }
         }
     }
@@ -100,10 +100,9 @@ struct TimerView: View {
             clock(progress: 0, accent: Phase.focus.color, timeColor: Self.ink.opacity(0.5),
                   time: format(model.engine.duration(of: .focus)), icon: "play.fill",
                   action: model.beginFocusPrompt)
-            purposeLine(nil)
-            todayText
-            primary("Start focus", Phase.focus.color, model.beginFocusPrompt)
-            textButton("Take a break", model.startBreak)
+            infoLine(nil)
+            primary("Focus", Phase.focus.color, model.beginFocusPrompt)
+            textButton("Break", model.startBreak)
         }
     }
 
@@ -138,14 +137,23 @@ struct TimerView: View {
         .animation(.easeOut(duration: 0.15), value: model.hoveringClock)
     }
 
-    /// Opens today's list.
-    private var todayText: some View {
-        Button { model.showingToday = true } label: {
-            Text("\(model.todayCount) \(model.todayCount == 1 ? "pomo" : "pomos") today")
-                .font(Self.bodyMedium).foregroundStyle(Self.subtle)
+    /// "Purpose · N pomos today" while a session runs, just "N pomos today" otherwise.
+    /// Sits in the same place on every timer screen; clicking it opens today's list.
+    private func infoLine(_ purpose: String?) -> some View {
+        let today = "\(model.todayCount) \(model.todayCount == 1 ? "pomo" : "pomos") today"
+        return Button { model.showingToday = true } label: {
+            HStack(spacing: 0) {
+                if let purpose {
+                    Text(purpose).lineLimit(1).truncationMode(.tail) // the purpose gives way, never the count
+                    Text(" · ")
+                }
+                Text(today).fixedSize()
+            }
+            .font(Self.bodyMedium).foregroundStyle(Self.subtle)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .help("Show today's pomos")
+        .help(purpose.map { "\($0)\nShow today's pomos" } ?? "Show today's pomos")
     }
 
     private static let timeFormat: DateFormatter = {
@@ -233,8 +241,7 @@ struct TimerView: View {
             clock(progress: progress, accent: shown, timeColor: Self.ink,
                   time: format(r), icon: paused ? "play.fill" : "pause.fill",
                   dim: paused, action: model.togglePause)
-            purposeLine(model.engine.session?.purpose)
-            todayText
+            infoLine(model.engine.session?.purpose)
             switch phase {
             // The button wears the current phase's colour (orange in overtime), like the ring.
             case .focus: primary("Recall", accent, model.startRecall)
@@ -247,14 +254,6 @@ struct TimerView: View {
                 textButton("Stop", model.end)
             }
         }
-    }
-
-    /// The running session's purpose; an empty line of the same height otherwise,
-    /// so the today line and buttons sit in the same place on every screen.
-    private func purposeLine(_ purpose: String?) -> some View {
-        Text(purpose ?? " ").font(Self.bodyMedium).foregroundStyle(Self.ink)
-            .lineLimit(1).truncationMode(.tail)
-            .help(purpose ?? "")
     }
 
     private func textButton(_ t: String, _ action: @escaping () -> Void) -> some View {
